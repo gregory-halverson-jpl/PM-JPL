@@ -1,4 +1,6 @@
-# MODIS Global Evapotranspiration Project (MOD16)
+# JPL implementation of the MOD16 evapotranspiration remote sensing model
+
+[![CI](https://github.com/JPL-Evapotranspiration-Algorithms/MOD16-JPL/actions/workflows/ci.yml/badge.svg)](https://github.com/JPL-Evapotranspiration-Algorithms/MOD16-JPL/actions/workflows/ci.yml)
 
 The MODIS Global Evapotranspiration Project (MOD16) is a software package developed by a team of researchers from NASA Jet Propulsion Laboratory and the University of Montana. This software is a Python implementation of the MOD16 evapotranspiration algorithm, designed to process high-resolution instantaneous remote sensing imagery.
 
