@@ -4,8 +4,8 @@ import numpy as np
 import rasters as rt
 from rasters import Raster
 
-from santanello import calculate_soil_heat_flux as santanello_G
-from SEBAL import calculate_soil_heat_flux as SEBAL_G
+from ..santanello import calculate_soil_heat_flux as santanello_G
+from ..SEBAL import calculate_soil_heat_flux as SEBAL_G
 
 DEFAULT_G_METHOD = "santanello"
 
