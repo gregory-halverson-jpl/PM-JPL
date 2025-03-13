@@ -1,12 +1,13 @@
 from typing import Union
-from daylight.daylight import SHA_deg_from_doy_lat, daylight_from_SHA, sunrise_from_SHA
-from meteorology_conversion.meteorology_conversion import celcius_to_kelvin
+from sun_angles import SHA_deg_from_DOY_lat, daylight_from_SHA, sunrise_from_SHA
+
 import rasters as rt
 from rasters import Raster
 import numpy as np
 import pandas as pd
 
-from verma_net_radiation.verma_net_radiation import daily_Rn_integration_verma
+from ..meteorology_conversion.meteorology_conversion import celcius_to_kelvin
+from ..verma_net_radiation.verma_net_radiation import daily_Rn_integration_verma
 
 # latent heat of vaporization for water at 20 Celsius in Joules per kilogram
 LAMBDA_JKG_WATER_20C = 2450000.0
@@ -46,20 +47,20 @@ def daily_ET_from_daily_LE(
 
 def process_daily_ET_table(input_df: pd.DataFrame) -> pd.DataFrame:
     hour_of_day = input_df.hour_of_day
-    doy = input_df.doy
+    DOY = input_df.doy
     lat = input_df.lat
     LE = input_df.LE
     Rn = input_df.Rn
     EF = LE / Rn
 
-    SHA_deg = SHA_deg_from_doy_lat(doy, lat)
+    SHA_deg = SHA_deg_from_DOY_lat(DOY=DOY, latitude=lat)
     sunrise_hour = sunrise_from_SHA(SHA_deg)
     daylight_hours = daylight_from_SHA(SHA_deg)
 
     Rn_daylight = daily_Rn_integration_verma(
         Rn=Rn,
         hour_of_day=hour_of_day,
-        doy=doy,
+        DOY=DOY,
         lat=lat,
         sunrise_hour=sunrise_hour,
         daylight_hours=daylight_hours

@@ -29,7 +29,7 @@ from .priestley_taylor.priestley_taylor import delta_Pa_from_Ta_C, delta_kPa_fro
 
 from .soil_heat_flux import calculate_soil_heat_flux
 from .evapotranspiration_conversion import daily_ET_from_daily_LE
-from .meteorology_conversion import kelvin_to_celsius, calculate_specific_humidity, calculate_air_density, delta_from_Ta_C
+from .meteorology_conversion import kelvin_to_celsius, calculate_specific_humidity, calculate_air_density
 from .vegetation_conversion.vegetation_conversion import FVC_from_NDVI, LAI_from_NDVI
 
 from .constants import *

@@ -1,4 +1,4 @@
-from priestley_taylor import GAMMA_PA
+from .priestley_taylor import GAMMA_PA
 
 # TODO need to defend picking arbitrary maximum to avoid extreme values
 MIN_RESISTANCE = 0.0
