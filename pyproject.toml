@@ -2,9 +2,9 @@
 requires = ["setuptools", "wheel"]
 
 [project]
-name = "MOD16"
+name = "MOD16-JPL"
 version = "1.0.0"
-description = "MOD16 evapotranspiration algorithm for high resolution instantaneous remote sensing imagery"
+description = "JPL implementation of the MOD16 evapotranspiration algorithm for high resolution instantaneous remote sensing imagery"
 readme = "README.md"
 authors = [
     { name = "Gregory Halverson", email = "gregory.h.halverson@jpl.nasa.gov" },
@@ -55,7 +55,7 @@ dev = [
 ]
 
 [tool.setuptools.package-data]
-MOD16 = ["*.txt", "*.csv", "*.tif"]
+MOD16_JPL = ["*.txt", "*.csv", "*.tif"]
 
 [project.urls]
-"Homepage" = "https://github.com/JPL-Evapotranspiration-Algorithms/MOD16"
+"Homepage" = "https://github.com/JPL-Evapotranspiration-Algorithms/MOD16-JPL"
