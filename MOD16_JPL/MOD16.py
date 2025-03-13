@@ -66,7 +66,7 @@ DEFAULT_OUTPUT_VARIABLES = [
     'ET_daily_kg'
 ]
 
-def process_MOD16_array(
+def MOD16(
         Rn: Union[Raster, np.ndarray],
         G: Union[Raster, np.ndarray],
         NDVI: Union[Raster, np.ndarray],
