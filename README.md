@@ -1,4 +1,4 @@
-# MODIS Global Evapotranspiration Project (MOD16)
+# JPL implementation of the MOD16 evapotranspiration remote sensing model
 
 [![CI](https://github.com/JPL-Evapotranspiration-Algorithms/MOD16-JPL/actions/workflows/ci.yml/badge.svg)](https://github.com/JPL-Evapotranspiration-Algorithms/MOD16-JPL/actions/workflows/ci.yml)
 
