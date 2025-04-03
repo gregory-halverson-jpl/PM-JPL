@@ -2,26 +2,15 @@ import pytest
 
 # List of dependencies
 dependencies = [
-    "affine",
-    "astropy",
-    "geopandas",
-    "h5py",
-    "keras",
-    "matplotlib",
+    "ECOv002_CMR",
+    "ECOv002_granules",
+    "GEOS5FP",
+    "NASADEM",
     "numpy",
-    "PIL",
     "pandas",
-    "pyproj",
-    "pyresample",
-    "rasterio",
-    "requests",
-    "scipy",
-    "shapely",
-    "six",
-    "skimage",
+    "rasters",
     "sun_angles",
-    "tensorflow",
-    "urllib3"
+    "verma_net_radiation"
 ]
 
 # Generate individual test functions for each dependency

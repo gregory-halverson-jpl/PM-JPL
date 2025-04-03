@@ -11,15 +11,13 @@ from typing import Dict, Union
 from datetime import datetime
 
 import numpy as np
-from numpy import where, nan, exp, array, isnan, logical_and, clip, float32
-
 import rasters as rt
-
 from rasters import Raster, RasterGrid, RasterGeometry
 
 from GEOS5FP import GEOS5FP
-
+from NASADEM import NASADEM
 from verma_net_radiation import process_verma_net_radiation
+from SEBAL_soil_heat_flux import calculate_SEBAL_soil_heat_flux
 
 from .parameters import MOD16_parameter_from_IGBP
 from .evapotranspiration_conversion.evapotranspiration_conversion import lambda_Jkg_from_Ta_C
@@ -77,13 +75,15 @@ def PMJPL(
         Tmin_C: Union[Raster, np.ndarray] = None,
         RH: Union[Raster, np.ndarray] = None,
         IGBP: Union[Raster, np.ndarray] = None,
+        FVC: Union[Raster, np.ndarray] = None,
         geometry: RasterGeometry = None,
         time_UTC: datetime = None,
         GEOS5FP_connection: GEOS5FP = None,
         resampling: str = "nearest",
         Ps_Pa: Union[Raster, np.ndarray] = None,
-        elevation_m: Union[Raster, np.ndarray] = None,
+        elevation_km: Union[Raster, np.ndarray] = None,
         delta_Pa: Union[Raster, np.ndarray] = None,
+        lambda_Jkg: Union[Raster, np.ndarray] = None,
         gamma_Jkg: Union[Raster, np.ndarray, float] = None) -> Dict[str, Raster]:
     results = {}
 
@@ -112,6 +112,11 @@ def PMJPL(
 
     if RH is None:
         raise ValueError("relative humidity (RH) not given")
+
+    if elevation_km is None and geometry is not None:
+        elevation_km = NASADEM.elevation_km(geometry=geometry)
+
+    elevation_m = elevation_km * 1000.0
 
     if Rn is None and albedo is not None and ST_C is not None and emissivity is not None:
         if SWin is None and geometry is not None and time_UTC is not None:
@@ -146,10 +151,7 @@ def PMJPL(
     if G is None:
         raise ValueError("soil heat flux (G) not given")
 
-    # calculate leaf area index if it's not given
-    if LAI is None:
-        # calculate leaf area index from NDVI
-        LAI = LAI_from_NDVI(NDVI)
+    LAI = LAI_from_NDVI(NDVI)
 
     # calculate fraction of vegetation cover if it's not given
     if FVC is None:
@@ -239,14 +241,14 @@ def PMJPL(
     results['rhc'] = rhc
 
     # calculate resistance to radiative heat transfer through air (rrc)
-    rrc = float32(rho_kgm3 * Cp_Jkg / (4.0 * SIGMA * Ta_K ** 3.0))
+    rrc = np.float32(rho_kgm3 * Cp_Jkg / (4.0 * SIGMA * Ta_K ** 3.0))
     results['rrc'] = rrc
 
     # calculate aerodynamic resistance (rhrc)
     # in seconds per meter
     # from wet canopy resistance to sensible heat
     # and resistance to radiative heat transfer through air
-    rhrc = float32((rhc * rrc) / (rhc + rrc))
+    rhrc = np.float32((rhc * rrc) / (rhc + rrc))
     results['rhrc'] = rhrc
 
     # calculate leaf conductance to evaporated water vapor (gl_e_wv)
@@ -409,7 +411,7 @@ def PMJPL(
     results['rtot'] = rtot
 
     # calculate resistance to radiative heat transfer through air
-    rrs = float32(rho_kgm3 * Cp_Jkg / (4.0 * SIGMA * Ta_K ** 3))
+    rrs = np.float32(rho_kgm3 * Cp_Jkg / (4.0 * SIGMA * Ta_K ** 3))
     results['rrs'] = rrs
 
     # calculate aerodynamic resistance at the soil surface
@@ -462,7 +464,7 @@ def PMJPL(
     LEs = rt.clip(LE_soil_wet + LE_soil_pot * fSM, 0.0, None)
 
     # fill soil evaporation with zero
-    LEs = rt.where(isnan(LEs), 0.0, LEs)
+    LEs = rt.where(np.isnan(LEs), 0.0, LEs)
     results['LEs'] = LEs
 
     # sum partitions into total latent heat flux

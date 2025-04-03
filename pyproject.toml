@@ -22,10 +22,12 @@ dependencies = [
     "ECOv002-granules>=1.0.3",
     "ECOv003-granules",
     "GEOS5FP>=1.1.1",
+    "NASADEM",
     "numpy",
     "pandas",
     "rasters>=1.4.6",
     "SEBAL-soil-heat-flux",
+    "sun-angles",
     "verma-net-radiation"
 ]
 
