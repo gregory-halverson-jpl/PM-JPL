@@ -7,33 +7,28 @@ https://landweb.nascom.nasa.gov/QA_WWW/forPage/user_guide/MOD16UsersGuide2016.pd
 Developed by Gregory Halverson in the Jet Propulsion Laboratory Year-Round Internship Program (Columbus Technologies and Services), in coordination with the ECOSTRESS mission and master's thesis studies at California State University, Northridge.
 """
 import logging
-from typing import Callable, Dict, Union
+from typing import Dict, Union
 from datetime import datetime
-from os.path import join, abspath, dirname, expanduser
 
 import numpy as np
-import pandas as pd
 from numpy import where, nan, exp, array, isnan, logical_and, clip, float32
-import warnings
 
-import rasters as rt 
+import rasters as rt
 
 from rasters import Raster, RasterGrid, RasterGeometry
 
 from GEOS5FP import GEOS5FP
 
-from verma_net_radiation import process_verma_net_radiation, daily_Rn_integration_verma
+from verma_net_radiation import process_verma_net_radiation
 
-from .MCD12C1.MCD12C1 import load_MCD12C1_IGBP
 from .parameters import MOD16_parameter_from_IGBP
 from .evapotranspiration_conversion.evapotranspiration_conversion import lambda_Jkg_from_Ta_C
-from .meteorology_conversion.meteorology_conversion import SVP_Pa_from_Ta_C, calculate_specific_heat, calculate_surface_pressure, celcius_to_kelvin
+from .meteorology_conversion.meteorology_conversion import SVP_Pa_from_Ta_C, calculate_specific_heat, \
+    calculate_surface_pressure, celcius_to_kelvin
 from .penman_monteith.penman_monteith import calculate_gamma
-from .priestley_taylor.priestley_taylor import delta_Pa_from_Ta_C, delta_kPa_from_Ta_C
+from .priestley_taylor.priestley_taylor import delta_Pa_from_Ta_C
 
-from .soil_heat_flux import calculate_soil_heat_flux
-from .evapotranspiration_conversion import daily_ET_from_daily_LE
-from .meteorology_conversion import kelvin_to_celsius, calculate_specific_humidity, calculate_air_density
+from .meteorology_conversion import calculate_specific_humidity, calculate_air_density
 from .vegetation_conversion.vegetation_conversion import FVC_from_NDVI, LAI_from_NDVI
 
 from .constants import *
@@ -69,6 +64,7 @@ DEFAULT_OUTPUT_VARIABLES = [
     'LE_daily',
     'ET_daily_kg'
 ]
+
 
 def PMJPL(
         NDVI: Union[Raster, np.ndarray],
@@ -106,7 +102,7 @@ def PMJPL(
 
     if Ta_C is None:
         raise ValueError("air temperature (Ta_C) not given")
-    
+
     if RH is None and geometry is not None and time_UTC is not None:
         RH = GEOS5FP_connection.RH(
             time_UTC=time_UTC,
@@ -149,7 +145,6 @@ def PMJPL(
 
     if G is None:
         raise ValueError("soil heat flux (G) not given")
-
 
     # calculate leaf area index if it's not given
     if LAI is None:
@@ -202,7 +197,7 @@ def PMJPL(
     # from specific heat of water vapor (CPW)
     # and specific heat of dry air (CPD)
     Cp_Jkg = calculate_specific_heat(specific_humidity)
-    results["Cp"] = Cp_Jkg    
+    results["Cp"] = Cp_Jkg
 
     # calculate delta term if it's not given
     if delta_Pa is None:
@@ -232,7 +227,7 @@ def PMJPL(
 
     # query leaf conductance to sensible heat (gl_sh) in seconds per meter
     gl_sh = MOD16_parameter_from_IGBP(
-        variable="gl_sh", 
+        variable="gl_sh",
         IGBP=IGBP
     )
 
@@ -256,7 +251,7 @@ def PMJPL(
 
     # calculate leaf conductance to evaporated water vapor (gl_e_wv)
     gl_e_wv = MOD16_parameter_from_IGBP(
-        variable="gl_e_wv", 
+        variable="gl_e_wv",
         IGBP=IGBP
     )
 
@@ -274,18 +269,18 @@ def PMJPL(
     # calculate wet latent heat flux (LEi)
     # in watts per square meter
     LEi = calculate_interception(
-        delta_Pa=delta_Pa, 
-        Ac=Ac, 
-        rho=rho_kgm3, 
-        Cp=Cp_Jkg, 
-        VPD_Pa=VPD_Pa, 
-        FVC=FVC, 
-        rhrc=rhrc, 
-        fwet=fwet, 
+        delta_Pa=delta_Pa,
+        Ac=Ac,
+        rho=rho_kgm3,
+        Cp=Cp_Jkg,
+        VPD_Pa=VPD_Pa,
+        FVC=FVC,
+        rhrc=rhrc,
+        fwet=fwet,
         rvc=rvc,
         gamma_Jkg=gamma_Jkg
     )
-    
+
     results['LEi'] = LEi
 
     # calculate correctance factor (rcorr)
@@ -296,7 +291,7 @@ def PMJPL(
 
     # query biome-specific mean potential stomatal conductance per unit leaf area
     CL = MOD16_parameter_from_IGBP(
-        variable="CL", 
+        variable="CL",
         IGBP=IGBP
     )
 
@@ -304,7 +299,7 @@ def PMJPL(
 
     # query open minimum temperature by land-cover
     tmin_open = MOD16_parameter_from_IGBP(
-        variable="tmin_open", 
+        variable="tmin_open",
         IGBP=IGBP
     )
 
@@ -312,7 +307,7 @@ def PMJPL(
 
     # query closed minimum temperature by land-cover
     tmin_close = MOD16_parameter_from_IGBP(
-        variable="tmin_close", 
+        variable="tmin_close",
         IGBP=IGBP
     )
 
@@ -324,7 +319,7 @@ def PMJPL(
 
     # query open vapor pressure deficit by land-cover
     VPD_open = MOD16_parameter_from_IGBP(
-        variable="VPD_open", 
+        variable="VPD_open",
         IGBP=IGBP
     )
 
@@ -332,7 +327,7 @@ def PMJPL(
 
     # query closed vapor pressure deficit by land-cover
     VPD_close = MOD16_parameter_from_IGBP(
-        variable="VPD_close", 
+        variable="VPD_close",
         IGBP=IGBP
     )
 
@@ -374,32 +369,32 @@ def PMJPL(
 
     # calculate transpiration
     LEc = calculate_transpiration(
-        delta_Pa=delta_Pa, 
-        Ac=Ac, 
-        rho=rho_kgm3, 
-        Cp_Jkg=Cp_Jkg, 
-        VPD_Pa=VPD_Pa, 
-        FVC=FVC, 
-        ra=ra, 
-        fwet=fwet, 
+        delta_Pa=delta_Pa,
+        Ac=Ac,
+        rho=rho_kgm3,
+        Cp_Jkg=Cp_Jkg,
+        VPD_Pa=VPD_Pa,
+        FVC=FVC,
+        ra=ra,
+        fwet=fwet,
         rs=rs,
         gamma_Jkg=gamma_Jkg
     )
-    
+
     results['LEc'] = LEc
 
     # soil evaporation
 
     # query aerodynamic resistant constraints from land-cover
     rbl_max = MOD16_parameter_from_IGBP(
-        variable="rbl_max", 
+        variable="rbl_max",
         IGBP=IGBP
     )
 
     results['rbl_max'] = rbl_max
 
     rbl_min = MOD16_parameter_from_IGBP(
-        variable="rbl_min", 
+        variable="rbl_min",
         IGBP=IGBP
     )
 
@@ -429,34 +424,34 @@ def PMJPL(
 
     # calculate wet soil evaporation
     LE_soil_wet = calculate_wet_soil_evaporation(
-        delta_Pa=delta_Pa, 
-        Asoil=Asoil, 
-        rho=rho_kgm3, 
-        Cp_Jkg=Cp_Jkg, 
-        FVC=FVC, 
-        VPD_Pa=VPD_Pa, 
-        ras=ras, 
-        fwet=fwet, 
+        delta_Pa=delta_Pa,
+        Asoil=Asoil,
+        rho=rho_kgm3,
+        Cp_Jkg=Cp_Jkg,
+        FVC=FVC,
+        VPD_Pa=VPD_Pa,
+        ras=ras,
+        fwet=fwet,
         rtot=rtot,
         gamma_Jkg=gamma_Jkg
     )
-    
+
     results['LE_soil_wet'] = LE_soil_wet
 
     # calculate potential soil evaporation
     LE_soil_pot = calculate_potential_soil_evaporation(
-        delta_Pa=delta_Pa, 
-        Asoil=Asoil, 
-        rho=rho_kgm3, 
-        Cp_Jkg=Cp_Jkg, 
-        FVC=FVC, 
-        VPD_Pa=VPD_Pa, 
-        ras=ras, 
-        fwet=fwet, 
+        delta_Pa=delta_Pa,
+        Asoil=Asoil,
+        rho=rho_kgm3,
+        Cp_Jkg=Cp_Jkg,
+        FVC=FVC,
+        VPD_Pa=VPD_Pa,
+        ras=ras,
+        fwet=fwet,
         rtot=rtot,
         gamma_Jkg=gamma_Jkg
     )
-    
+
     results['LE_soil_pot'] = LE_soil_pot
 
     # calculate soil moisture constraint

@@ -18,29 +18,17 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "affine",
-    "astropy",
-    "GEOS5FP",
-    "geopandas",
-    "h5py",
-    "keras",
-    "matplotlib",
+    "ECOv002-CMR>=1.0.5",
+    "ECOv002-granules>=1.0.3",
+    "ECOv003-granules",
+    "GEOS5FP>=1.1.1",
+    "h5py>=3.13.0",
     "numpy",
     "pandas",
-    "pillow",
-    "pygeos",
-    "pyproj",
-    "pyresample",
-    "rasterio",
-    "rasters",
-    "requests",
-    "scikit-image",
-    "scipy",
-    "shapely",
-    "six",
-    "sun-angles",
-    "tensorflow",
-    "urllib3",
+    "rasters>=1.4.6",
+    "scikit-learn",
+    "SEBAL-soil-heat-flux",
+    "verma-net-radiation"
 ]
 
 requires-python = ">=3.10"
