@@ -66,7 +66,7 @@ DEFAULT_OUTPUT_VARIABLES = [
     'ET_daily_kg'
 ]
 
-def MOD16(
+def PMJPL(
         Rn: Union[Raster, np.ndarray],
         G: Union[Raster, np.ndarray],
         NDVI: Union[Raster, np.ndarray],

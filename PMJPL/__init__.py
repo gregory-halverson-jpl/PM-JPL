@@ -1,4 +1,4 @@
-from .MOD16 import *
+from .PMJPL import *
 
 from os.path import join, abspath, dirname
 

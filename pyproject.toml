@@ -2,8 +2,8 @@
 requires = ["setuptools", "wheel"]
 
 [project]
-name = "MOD16-JPL"
-version = "1.1.0"
+name = "PM-JPL"
+version = "1.2.1"
 description = "JPL implementation of the MOD16 evapotranspiration algorithm for high resolution instantaneous remote sensing imagery"
 readme = "README.md"
 authors = [
@@ -55,7 +55,7 @@ dev = [
 ]
 
 [tool.setuptools.package-data]
-MOD16_JPL = ["*.txt", "*.csv", "*.tif"]
+PM_JPL = ["*.txt", "*.csv", "*.tif"]
 
 [project.urls]
-"Homepage" = "https://github.com/JPL-Evapotranspiration-Algorithms/MOD16-JPL"
+"Homepage" = "https://github.com/JPL-Evapotranspiration-Algorithms/PM-JPL"
