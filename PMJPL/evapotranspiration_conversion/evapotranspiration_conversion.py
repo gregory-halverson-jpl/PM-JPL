@@ -6,8 +6,10 @@ from rasters import Raster
 import numpy as np
 import pandas as pd
 
+from verma_net_radiation import daily_Rn_integration_verma
+
 from ..meteorology_conversion.meteorology_conversion import celcius_to_kelvin
-from ..verma_net_radiation.verma_net_radiation import daily_Rn_integration_verma
+
 
 # latent heat of vaporization for water at 20 Celsius in Joules per kilogram
 LAMBDA_JKG_WATER_20C = 2450000.0

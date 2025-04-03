@@ -7,10 +7,10 @@ from .constants import GAMMA_PA
 def calculate_wet_soil_evaporation(
         delta_Pa: Union[Raster, np.ndarray], 
         Asoil: Union[Raster, np.ndarray], 
-        rho: Union[Raster, np.ndarray], 
-        Cp: Union[Raster, np.ndarray], 
+        rho_kgm3: Union[Raster, np.ndarray], 
+        Cp_Jkg: Union[Raster, np.ndarray], 
         FVC: Union[Raster, np.ndarray], 
-        VPD: Union[Raster, np.ndarray], 
+        VPD_Pa: Union[Raster, np.ndarray], 
         ras: Union[Raster, np.ndarray], 
         fwet: Union[Raster, np.ndarray], 
         rtot: Union[Raster, np.ndarray],
@@ -29,7 +29,7 @@ def calculate_wet_soil_evaporation(
     :param gamme: gamma constant (default: GAMMA)
     :return: wet soil evaporation in watts per square meter
     """
-    numerator = (delta_Pa * Asoil + rho * Cp * (1.0 - FVC) * VPD / ras) * fwet
+    numerator = (delta_Pa * Asoil + rho_kgm3 * Cp_Jkg * (1.0 - FVC) * VPD_Pa / ras) * fwet
     denominator = delta_Pa + gamma_Pa * rtot / ras
     LE_soil_wet = numerator / denominator
 

@@ -8,8 +8,8 @@ from .constants import GAMMA_PA
 def calculate_transpiration(
         delta_Pa: Union[Raster, np.ndarray],
         Ac: Union[Raster, np.ndarray],
-        rho: Union[Raster, np.ndarray], 
-        Cp: Union[Raster, np.ndarray], 
+        rho_kgm3: Union[Raster, np.ndarray], 
+        Cp_Jkg: Union[Raster, np.ndarray], 
         VPD_Pa: Union[Raster, np.ndarray], 
         FVC: Union[Raster, np.ndarray], 
         ra: Union[Raster, np.ndarray], 
@@ -34,11 +34,11 @@ def calculate_transpiration(
     Returns:
         Union[Raster, np.ndarray]: transpiration (LEc) in mm/day.
     """
-    numerator = (delta_Pa * Ac + (rho * Cp * FVC * VPD_Pa / ra)) * (1.0 - fwet)
+    numerator = (delta_Pa * Ac + (rho_kgm3 * Cp_Jkg * FVC * VPD_Pa / ra)) * (1.0 - fwet)
     denominator = delta_Pa + gamma_Pa * (1.0 + (rs / ra))
     LEc = numerator / denominator
 
     # fill transpiration with zero
-    LEc = rt.where(rt.isnan(LEc), 0.0, LEc)
+    LEc = rt.where(np.isnan(LEc), 0.0, LEc)
 
     return LEc

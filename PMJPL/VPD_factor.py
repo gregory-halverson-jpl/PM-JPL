@@ -20,7 +20,7 @@ def calculate_VPD_factor(
     """
     # calculate VPD factor using queried open and closed VPD
     mVPD = rt.where(VPD <= VPD_open, 1.0, np.nan)
-    mVPD = rt.where(rt.logical_and(VPD_open < VPD, VPD < VPD_close), (VPD_close - VPD) / (VPD_close - VPD_open), mVPD)
+    mVPD = rt.where(np.logical_and(VPD_open < VPD, VPD < VPD_close), (VPD_close - VPD) / (VPD_close - VPD_open), mVPD)
     mVPD = rt.where(VPD >= VPD_close, 0.0, mVPD)
 
     return mVPD

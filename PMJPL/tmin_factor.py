@@ -32,7 +32,7 @@ def calculate_tmin_factor(
     mTmin = rt.where(Tmin >= tmin_open, 1.0, np.nan)
 
     mTmin = rt.where(
-        rt.logical_and(
+        np.logical_and(
             tmin_close < Tmin,
             Tmin < tmin_open
         ),
