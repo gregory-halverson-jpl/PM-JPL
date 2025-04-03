@@ -14,10 +14,12 @@ import numpy as np
 import rasters as rt
 from rasters import Raster, RasterGrid, RasterGeometry
 
+from check_distribution import check_distribution
 from GEOS5FP import GEOS5FP
 from NASADEM import NASADEM
 from verma_net_radiation import process_verma_net_radiation
 from SEBAL_soil_heat_flux import calculate_SEBAL_soil_heat_flux
+from MCD12C1_2019_v006 import load_MCD12C1_IGBP
 
 from .parameters import MOD16_parameter_from_IGBP
 from .evapotranspiration_conversion.evapotranspiration_conversion import lambda_Jkg_from_Ta_C
@@ -103,6 +105,18 @@ def PMJPL(
     if Ta_C is None:
         raise ValueError("air temperature (Ta_C) not given")
 
+    if Tmin_C is None and geometry is not None and time_UTC is not None:
+        Tmin_K = GEOS5FP_connection.Tmin_K(
+            time_UTC=time_UTC,
+            geometry=geometry,
+            resampling=resampling
+        )
+
+        Tmin_C = Tmin_K - 273.15
+
+    if Tmin_C is None:
+        raise ValueError("minimum temperature (Tmin_C) not given")
+
     if RH is None and geometry is not None and time_UTC is not None:
         RH = GEOS5FP_connection.RH(
             time_UTC=time_UTC,
@@ -117,6 +131,9 @@ def PMJPL(
         elevation_km = NASADEM.elevation_km(geometry=geometry)
 
     elevation_m = elevation_km * 1000.0
+
+    if IGBP is None and geometry is not None:
+        IGBP = load_MCD12C1_IGBP(geometry=geometry)
 
     if Rn is None and albedo is not None and ST_C is not None and emissivity is not None:
         if SWin is None and geometry is not None and time_UTC is not None:
@@ -280,7 +297,7 @@ def PMJPL(
         rhrc=rhrc,
         fwet=fwet,
         rvc=rvc,
-        gamma_Jkg=gamma_Jkg
+        # gamma_Jkg=gamma_Jkg
     )
 
     results['LEi'] = LEi
@@ -293,7 +310,7 @@ def PMJPL(
 
     # query biome-specific mean potential stomatal conductance per unit leaf area
     CL = MOD16_parameter_from_IGBP(
-        variable="CL",
+        variable="cl",
         IGBP=IGBP
     )
 
@@ -315,13 +332,17 @@ def PMJPL(
 
     results['tmin_close'] = tmin_close
 
+    check_distribution(Tmin_C, "Tmin_C")
+    check_distribution(tmin_open, "tmin_open")
+    check_distribution(tmin_close, "tmin_close")
+
     # calculate minimum temperature factor for stomatal conductance
-    mTmin = calculate_tmin_factor(Tmin_C, tmin_open, tmin_close, IGBP)
+    mTmin = calculate_tmin_factor(Tmin_C, tmin_open, tmin_close)
     results['mTmin'] = mTmin
 
     # query open vapor pressure deficit by land-cover
     VPD_open = MOD16_parameter_from_IGBP(
-        variable="VPD_open",
+        variable="vpd_open",
         IGBP=IGBP
     )
 
@@ -329,7 +350,7 @@ def PMJPL(
 
     # query closed vapor pressure deficit by land-cover
     VPD_close = MOD16_parameter_from_IGBP(
-        variable="VPD_close",
+        variable="vpd_close",
         IGBP=IGBP
     )
 
@@ -373,14 +394,14 @@ def PMJPL(
     LEc = calculate_transpiration(
         delta_Pa=delta_Pa,
         Ac=Ac,
-        rho=rho_kgm3,
+        rho_kgm3=rho_kgm3,
         Cp_Jkg=Cp_Jkg,
         VPD_Pa=VPD_Pa,
         FVC=FVC,
         ra=ra,
         fwet=fwet,
         rs=rs,
-        gamma_Jkg=gamma_Jkg
+        # gamma_Jkg=gamma_Jkg
     )
 
     results['LEc'] = LEc
@@ -428,14 +449,14 @@ def PMJPL(
     LE_soil_wet = calculate_wet_soil_evaporation(
         delta_Pa=delta_Pa,
         Asoil=Asoil,
-        rho=rho_kgm3,
+        rho_kgm3=rho_kgm3,
         Cp_Jkg=Cp_Jkg,
         FVC=FVC,
         VPD_Pa=VPD_Pa,
         ras=ras,
         fwet=fwet,
         rtot=rtot,
-        gamma_Jkg=gamma_Jkg
+        # gamma_Jkg=gamma_Jkg
     )
 
     results['LE_soil_wet'] = LE_soil_wet
@@ -451,7 +472,7 @@ def PMJPL(
         ras=ras,
         fwet=fwet,
         rtot=rtot,
-        gamma_Jkg=gamma_Jkg
+        # gamma_Jkg=gamma_Jkg
     )
 
     results['LE_soil_pot'] = LE_soil_pot

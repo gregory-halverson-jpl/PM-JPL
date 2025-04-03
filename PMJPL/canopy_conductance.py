@@ -26,7 +26,7 @@ def calculate_canopy_conductance(
     """
     # noinspection PyTypeChecker
     Cc = rt.where(
-        rt.logical_and(LAI > 0.0, (1.0 - fwet) > 0.0),
+        np.logical_and(LAI > 0.0, (1.0 - fwet) > 0.0),
         gl_sh * (gs1 + Gcu) / (gs1 + gl_sh + Gcu) * LAI * (1.0 - fwet),
         0.0
     )

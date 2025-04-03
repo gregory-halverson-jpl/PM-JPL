@@ -18,4 +18,5 @@ def calculate_wet_canopy_resistance(
     :param fwet: relative surface wetness
     :return: wet canopy resistance
     """
+    # print(f"conductance: {conductance.shape}, LAI: {LAI.shape}, fwet: {fwet.shape}")
     return rt.clip(1.0 / rt.clip(conductance * LAI * fwet, 1.0 / max_resistance, None), min_resistance, max_resistance)

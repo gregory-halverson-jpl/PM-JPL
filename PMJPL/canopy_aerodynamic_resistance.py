@@ -23,7 +23,7 @@ def calculate_rtotc(
     rtotc = rt.where(VPD >= vpd_close, rbl_min, rtotc)
 
     rtotc = rt.where(
-        rt.logical_and(vpd_open < VPD, VPD < vpd_close),
+        np.logical_and(vpd_open < VPD, VPD < vpd_close),
         rbl_min + (rbl_max - rbl_min) * (vpd_close - VPD) / (vpd_close - vpd_open),
         rtotc
     )

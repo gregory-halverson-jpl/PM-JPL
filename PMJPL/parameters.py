@@ -5,7 +5,7 @@ import pandas as pd
 
 from rasters import Raster, RasterGeometry
 
-from .MCD12C1.MCD12C1 import load_MCD12C1_IGBP
+from MCD12C1_2019_v006 import load_MCD12C1_IGBP
 
 LUT = pd.read_csv(join(abspath(dirname(__file__)), 'mod16.csv'))
 

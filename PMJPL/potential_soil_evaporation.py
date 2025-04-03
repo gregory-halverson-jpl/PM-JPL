@@ -11,7 +11,7 @@ def calculate_potential_soil_evaporation(
         rho: float,
         Cp_Jkg: float,
         FVC: float,
-        VPD: float,
+        VPD_Pa: float,
         ras: float,
         fwet: float,
         rtot: float,
@@ -39,7 +39,7 @@ def calculate_potential_soil_evaporation(
     - The Penman-Monteith equation takes into account various factors such as radiation, air density, heat capacity, vegetation cover, vapor pressure deficit, aerodynamic resistance, soil wetness, and total resistance.
     - The function returns the potential soil evaporation as either a Raster object or a NumPy array, depending on the input data type.
     """
-    numerator = (delta_Pa * Asoil + rho * Cp_Jkg * (1.0 - FVC) * VPD / ras) * (1.0 - fwet)
+    numerator = (delta_Pa * Asoil + rho * Cp_Jkg * (1.0 - FVC) * VPD_Pa / ras) * (1.0 - fwet)
     denominator = delta_Pa + gamma_Pa * rtot / ras
     LE_soil_pot = numerator / denominator
 

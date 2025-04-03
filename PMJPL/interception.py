@@ -4,7 +4,7 @@ import rasters as rt
 from rasters import Raster
 
 from .constants import GAMMA_PA
-
+    
 def calculate_interception(
         delta_Pa: Union[Raster, np.ndarray],
         Ac: Union[Raster, np.ndarray],
@@ -15,7 +15,6 @@ def calculate_interception(
         rhrc: Union[Raster, np.ndarray],
         fwet: Union[Raster, np.ndarray],
         rvc: Union[Raster, np.ndarray],
-        water: Union[Raster, np.ndarray],
         gamma_Pa: Union[Raster, np.ndarray, float] = GAMMA_PA) -> Union[Raster, np.ndarray]:
     """
     Calculates the wet evaporation partition of the latent heat flux using the MOD16 method.
@@ -29,7 +28,6 @@ def calculate_interception(
     :param rhrc: aerodynamic resistance in seconds per meter
     :param fwet: relative surface wetness
     :param rvc: wet canopy resistance
-    :param water: water content in the canopy
     :param gamma_Pa: psychrometric constant for atmospheric pressure in Pascal (default: GAMMA_PA)
 
     :return: wet evaporation in watts per square meter
