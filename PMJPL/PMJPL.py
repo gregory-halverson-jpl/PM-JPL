@@ -20,6 +20,8 @@ import rasters as rt
 
 from rasters import Raster, RasterGrid, RasterGeometry
 
+from GEOS5FP import GEOS5FP
+
 from .MCD12C1.MCD12C1 import load_MCD12C1_IGBP
 from .parameters import MOD16_parameter_from_IGBP
 from .evapotranspiration_conversion.evapotranspiration_conversion import lambda_Jkg_from_Ta_C
@@ -67,9 +69,9 @@ DEFAULT_OUTPUT_VARIABLES = [
 ]
 
 def PMJPL(
+        NDVI: Union[Raster, np.ndarray],
         Rn: Union[Raster, np.ndarray],
         G: Union[Raster, np.ndarray],
-        NDVI: Union[Raster, np.ndarray],
         Ta_C: Union[Raster, np.ndarray],
         Tmin_C: Union[Raster, np.ndarray],
         RH: Union[Raster, np.ndarray],
@@ -79,6 +81,67 @@ def PMJPL(
         delta_Pa: Union[Raster, np.ndarray] = None,
         gamma_Jkg: Union[Raster, np.ndarray, float] = None) -> Dict[str, Raster]:
     results = {}
+
+
+    if geometry is None and isinstance(NDVI, Raster):
+        geometry = NDVI.geometry
+
+    if GEOS5FP_connection is None:
+        GEOS5FP_connection = GEOS5FP()
+
+    if Ta_C is None and geometry is not None and datetime_UTC is not None:
+        Ta_C = GEOS5FP_connection.Ta_C(
+            time_UTC=datetime_UTC,
+            geometry=geometry,
+            resampling=resampling
+        )
+
+    if Ta_C is None:
+        raise ValueError("air temperature (Ta_C) not given")
+    
+    if RH is None and geometry is not None and datetime_UTC is not None:
+        RH = GEOS5FP_connection.RH(
+            time_UTC=datetime_UTC,
+            geometry=geometry,
+            resampling=resampling
+        )
+
+    if RH is None:
+        raise ValueError("relative humidity (RH) not given")
+
+    if Rn is None and albedo is not None and ST_C is not None and emissivity is not None:
+        if SWin is None and geometry is not None and datetime_UTC is not None:
+            SWin = GEOS5FP_connection.SWin(
+                time_UTC=datetime_UTC,
+                geometry=geometry,
+                resampling=resampling
+            )
+
+        Rn_results = process_verma_net_radiation(
+            SWin=SWin,
+            albedo=albedo,
+            ST_C=ST_C,
+            emissivity=emissivity,
+            Ta_C=Ta_C,
+            RH=RH
+        )
+
+        Rn = Rn_results["Rn"]
+
+    if Rn is None:
+        raise ValueError("net radiation (Rn) not given")
+
+    if G is None and Rn is not None and ST_C is not None and NDVI is not None and albedo is not None:
+        G = calculate_SEBAL_soil_heat_flux(
+            Rn=Rn,
+            ST_C=ST_C,
+            NDVI=NDVI,
+            albedo=albedo
+        )
+
+    if G is None:
+        raise ValueError("soil heat flux (G) not given")
+
 
     # calculate leaf area index if it's not given
     if LAI is None:
