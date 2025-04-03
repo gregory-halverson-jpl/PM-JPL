@@ -22,6 +22,8 @@ from rasters import Raster, RasterGrid, RasterGeometry
 
 from GEOS5FP import GEOS5FP
 
+from verma_net_radiation import process_verma_net_radiation, daily_Rn_integration_verma
+
 from .MCD12C1.MCD12C1 import load_MCD12C1_IGBP
 from .parameters import MOD16_parameter_from_IGBP
 from .evapotranspiration_conversion.evapotranspiration_conversion import lambda_Jkg_from_Ta_C
@@ -70,18 +72,24 @@ DEFAULT_OUTPUT_VARIABLES = [
 
 def PMJPL(
         NDVI: Union[Raster, np.ndarray],
-        Rn: Union[Raster, np.ndarray],
-        G: Union[Raster, np.ndarray],
-        Ta_C: Union[Raster, np.ndarray],
-        Tmin_C: Union[Raster, np.ndarray],
-        RH: Union[Raster, np.ndarray],
-        IGBP: Union[Raster, np.ndarray],
+        ST_C: Union[Raster, np.ndarray] = None,
+        emissivity: Union[Raster, np.ndarray] = None,
+        albedo: Union[Raster, np.ndarray] = None,
+        Rn: Union[Raster, np.ndarray] = None,
+        G: Union[Raster, np.ndarray] = None,
+        Ta_C: Union[Raster, np.ndarray] = None,
+        Tmin_C: Union[Raster, np.ndarray] = None,
+        RH: Union[Raster, np.ndarray] = None,
+        IGBP: Union[Raster, np.ndarray] = None,
+        geometry: RasterGeometry = None,
+        time_UTC: datetime = None,
+        GEOS5FP_connection: GEOS5FP = None,
+        resampling: str = "nearest",
         Ps_Pa: Union[Raster, np.ndarray] = None,
         elevation_m: Union[Raster, np.ndarray] = None,
         delta_Pa: Union[Raster, np.ndarray] = None,
         gamma_Jkg: Union[Raster, np.ndarray, float] = None) -> Dict[str, Raster]:
     results = {}
-
 
     if geometry is None and isinstance(NDVI, Raster):
         geometry = NDVI.geometry
@@ -89,9 +97,9 @@ def PMJPL(
     if GEOS5FP_connection is None:
         GEOS5FP_connection = GEOS5FP()
 
-    if Ta_C is None and geometry is not None and datetime_UTC is not None:
+    if Ta_C is None and geometry is not None and time_UTC is not None:
         Ta_C = GEOS5FP_connection.Ta_C(
-            time_UTC=datetime_UTC,
+            time_UTC=time_UTC,
             geometry=geometry,
             resampling=resampling
         )
@@ -99,9 +107,9 @@ def PMJPL(
     if Ta_C is None:
         raise ValueError("air temperature (Ta_C) not given")
     
-    if RH is None and geometry is not None and datetime_UTC is not None:
+    if RH is None and geometry is not None and time_UTC is not None:
         RH = GEOS5FP_connection.RH(
-            time_UTC=datetime_UTC,
+            time_UTC=time_UTC,
             geometry=geometry,
             resampling=resampling
         )
@@ -110,9 +118,9 @@ def PMJPL(
         raise ValueError("relative humidity (RH) not given")
 
     if Rn is None and albedo is not None and ST_C is not None and emissivity is not None:
-        if SWin is None and geometry is not None and datetime_UTC is not None:
+        if SWin is None and geometry is not None and time_UTC is not None:
             SWin = GEOS5FP_connection.SWin(
-                time_UTC=datetime_UTC,
+                time_UTC=time_UTC,
                 geometry=geometry,
                 resampling=resampling
             )
