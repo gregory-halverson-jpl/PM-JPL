@@ -167,6 +167,8 @@ def PMJPL(
 
     if G is None:
         raise ValueError("soil heat flux (G) not given")
+    
+    results["G"] = G
 
     LAI = LAI_from_NDVI(NDVI)
 
