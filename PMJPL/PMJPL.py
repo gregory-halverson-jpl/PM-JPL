@@ -21,6 +21,9 @@ from verma_net_radiation import verma_net_radiation
 from SEBAL_soil_heat_flux import calculate_SEBAL_soil_heat_flux
 from MCD12C1_2019_v006 import load_MCD12C1_IGBP
 
+from carlson_fractional_vegetation_cover import carlson_fractional_vegetation_cover
+from carlson_leaf_area_index import carlson_leaf_area_index
+
 from .parameters import MOD16_parameter_from_IGBP
 from .evapotranspiration_conversion.evapotranspiration_conversion import lambda_Jkg_from_Ta_C
 from .meteorology_conversion.meteorology_conversion import SVP_Pa_from_Ta_C, calculate_specific_heat, \
@@ -29,8 +32,7 @@ from .penman_monteith.penman_monteith import calculate_gamma
 from .priestley_taylor.priestley_taylor import delta_Pa_from_Ta_C
 
 from .meteorology_conversion import calculate_specific_humidity, calculate_air_density
-from .vegetation_conversion.vegetation_conversion import FVC_from_NDVI, LAI_from_NDVI
-
+from carlson_leaf_area_index import carlson_leaf_area_index
 from .constants import *
 
 from .fwet import calculate_fwet
@@ -170,12 +172,12 @@ def PMJPL(
     
     results["G"] = G
 
-    LAI = LAI_from_NDVI(NDVI)
+    LAI = carlson_leaf_area_index(NDVI)
 
     # calculate fraction of vegetation cover if it's not given
     if FVC is None:
         # calculate fraction of vegetation cover from NDVI
-        FVC = FVC_from_NDVI(NDVI)
+        FVC = carlson_fractional_vegetation_cover(NDVI)
 
     # calculate surface air pressure if it's not given
     if Ps_Pa is None:
