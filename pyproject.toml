@@ -18,6 +18,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
+    "carlson-fractional-vegetation-cover",
     "check-distribution",
     "ECOv002-CMR>=1.0.5",
     "ECOv002-granules>=1.0.3",
