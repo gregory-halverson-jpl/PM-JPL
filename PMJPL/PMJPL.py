@@ -17,7 +17,7 @@ from rasters import Raster, RasterGrid, RasterGeometry
 from check_distribution import check_distribution
 from GEOS5FP import GEOS5FP
 from NASADEM import NASADEM
-from verma_net_radiation import process_verma_net_radiation
+from verma_net_radiation import verma_net_radiation
 from SEBAL_soil_heat_flux import calculate_SEBAL_soil_heat_flux
 from MCD12C1_2019_v006 import load_MCD12C1_IGBP
 
@@ -143,7 +143,7 @@ def PMJPL(
                 resampling=resampling
             )
 
-        Rn_results = process_verma_net_radiation(
+        Rn_results = verma_net_radiation(
             SWin=SWin,
             albedo=albedo,
             ST_C=ST_C,
