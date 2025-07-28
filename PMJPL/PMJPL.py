@@ -22,6 +22,7 @@ from SEBAL_soil_heat_flux import calculate_SEBAL_soil_heat_flux
 from MCD12C1_2019_v006 import load_MCD12C1_IGBP
 
 from carlson_fractional_vegetation_cover import carlson_fractional_vegetation_cover
+from carlson_leaf_area_index import carlson_leaf_area_index
 
 from .parameters import MOD16_parameter_from_IGBP
 from .evapotranspiration_conversion.evapotranspiration_conversion import lambda_Jkg_from_Ta_C
@@ -31,8 +32,7 @@ from .penman_monteith.penman_monteith import calculate_gamma
 from .priestley_taylor.priestley_taylor import delta_Pa_from_Ta_C
 
 from .meteorology_conversion import calculate_specific_humidity, calculate_air_density
-from .vegetation_conversion.vegetation_conversion import carlson_leaf_area_index
-
+from carlson_leaf_area_index import carlson_leaf_area_index
 from .constants import *
 
 from .fwet import calculate_fwet

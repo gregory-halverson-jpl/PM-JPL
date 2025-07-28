@@ -19,6 +19,7 @@ classifiers = [
 ]
 dependencies = [
     "carlson-fractional-vegetation-cover",
+    "carlson-leaf-area-index",
     "check-distribution",
     "ECOv002-CMR>=1.0.5",
     "ECOv002-granules>=1.0.3",
