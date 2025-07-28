@@ -29,7 +29,7 @@ from .penman_monteith.penman_monteith import calculate_gamma
 from .priestley_taylor.priestley_taylor import delta_Pa_from_Ta_C
 
 from .meteorology_conversion import calculate_specific_humidity, calculate_air_density
-from .vegetation_conversion.vegetation_conversion import FVC_from_NDVI, LAI_from_NDVI
+from .vegetation_conversion.vegetation_conversion import carlson_fractional_vegetation_cover, LAI_from_NDVI
 
 from .constants import *
 
@@ -175,7 +175,7 @@ def PMJPL(
     # calculate fraction of vegetation cover if it's not given
     if FVC is None:
         # calculate fraction of vegetation cover from NDVI
-        FVC = FVC_from_NDVI(NDVI)
+        FVC = carlson_fractional_vegetation_cover(NDVI)
 
     # calculate surface air pressure if it's not given
     if Ps_Pa is None:
