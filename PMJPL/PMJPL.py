@@ -51,7 +51,7 @@ from .VPD_factor import calculate_VPD_factor
 from .canopy_conductance import calculate_canopy_conductance
 
 from .wet_canopy_resistance import calculate_wet_canopy_resistance
-from .canopy_aerodynamic_resistance import calculate_rtotc
+from .canopy_aerodynamic_resistance import calculate_canopy_aerodynamic_resistance
 
 from .wet_soil_evaporation import calculate_wet_soil_evaporation
 from .potential_soil_evaporation import calculate_potential_soil_evaporation
@@ -434,7 +434,7 @@ def PMJPL(
 
     results['rbl_min'] = rbl_min
 
-    rtotc = calculate_rtotc(VPD_Pa, VPD_open, VPD_close, rbl_max, rbl_min)
+    rtotc = calculate_canopy_aerodynamic_resistance(VPD_Pa, VPD_open, VPD_close, rbl_max, rbl_min)
     results['rtotc'] = rtotc
 
     # calculate total aerodynamic resistance
