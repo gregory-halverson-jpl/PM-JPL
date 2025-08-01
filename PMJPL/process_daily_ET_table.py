@@ -4,7 +4,7 @@ from sun_angles import SHA_deg_from_DOY_lat, daylight_from_SHA, sunrise_from_SHA
 from verma_net_radiation import daily_Rn_integration_verma
 from daily_evapotranspiration_upscaling import daily_ET_from_daily_LE
 
-from .meteorology_conversion.meteorology_conversion import celcius_to_kelvin
+from meteorology_conversion import celcius_to_kelvin
 
 def process_daily_ET_table(input_df: pd.DataFrame) -> pd.DataFrame:
     hour_of_day = input_df.hour_of_day
