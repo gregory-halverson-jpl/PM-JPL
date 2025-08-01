@@ -42,7 +42,7 @@ from .calculate_gamma import calculate_gamma
 from carlson_leaf_area_index import carlson_leaf_area_index
 from .constants import *
 
-from .fwet import calculate_fwet
+from .fwet import calculate_relative_surface_wetness
 from .soil_moisture_constraint import calculate_fSM
 from .tmin_factor import calculate_tmin_factor
 from .correctance_factor import calculate_correctance_factor
@@ -250,7 +250,7 @@ def PMJPL(
 
     # calculate relative surface wetness (fwet)
     # from relative humidity
-    fwet = calculate_fwet(RH)
+    fwet = calculate_relative_surface_wetness(RH)
     results['fwet'] = fwet
 
     logger.info("calculating PM-MOD resistances")
