@@ -1,8 +1,10 @@
 import numpy as np
 from typing import Union
-from .constants import MAX_RESISTANCE
+
 import rasters as rt
 from rasters import Raster
+
+from .constants import MAX_RESISTANCE
 
 def calculate_canopy_conductance(
     LAI: Union[Raster, np.ndarray],
