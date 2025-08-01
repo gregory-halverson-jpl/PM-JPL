@@ -420,21 +420,22 @@ def PMJPL(
     # soil evaporation
 
     # query aerodynamic resistant constraints from land-cover
-    rbl_max = MOD16_parameter_from_IGBP(
+    RBL_max = MOD16_parameter_from_IGBP(
         variable="rbl_max",
         IGBP=IGBP
     )
 
-    results['rbl_max'] = rbl_max
+    results['rbl_max'] = RBL_max
 
-    rbl_min = MOD16_parameter_from_IGBP(
+    RBL_min = MOD16_parameter_from_IGBP(
         variable="rbl_min",
         IGBP=IGBP
     )
 
-    results['rbl_min'] = rbl_min
+    results['rbl_min'] = RBL_min
 
-    rtotc = calculate_canopy_aerodynamic_resistance(VPD_Pa, VPD_open, VPD_close, rbl_max, rbl_min)
+    # calculate canopy aerodynamic resistance in seconds per meter
+    rtotc = calculate_canopy_aerodynamic_resistance(VPD_Pa, VPD_open, VPD_close, RBL_max, RBL_min)
     results['rtotc'] = rtotc
 
     # calculate total aerodynamic resistance
