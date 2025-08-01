@@ -33,10 +33,11 @@ from meteorology_conversion import calculate_specific_humidity
 from meteorology_conversion import calculate_surface_pressure
 from meteorology_conversion import celcius_to_kelvin
 
+from priestley_taylor import delta_Pa_from_Ta_C
+
 from .parameters import MOD16_parameter_from_IGBP
 
 from .calculate_gamma import calculate_gamma
-from .priestley_taylor.priestley_taylor import delta_Pa_from_Ta_C
 
 from carlson_leaf_area_index import carlson_leaf_area_index
 from .constants import *

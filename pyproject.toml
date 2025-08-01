@@ -31,6 +31,7 @@ dependencies = [
     "NASADEM",
     "numpy",
     "pandas",
+    "priestley-taylor",
     "rasters>=1.4.6",
     "SEBAL-soil-heat-flux",
     "sun-angles>=1.3.0",
