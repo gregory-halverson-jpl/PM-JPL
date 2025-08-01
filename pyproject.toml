@@ -50,6 +50,10 @@ dev = [
     "twine"
 ]
 
+[tool.setuptools.packages.find]
+include = ["PMJPL*"]
+exclude = ["notebooks*", "references*", "tests*"]
+
 [tool.setuptools.package-data]
 PMJPL = ["*.txt", "*.csv", "*.tif"]
 
