@@ -36,6 +36,7 @@ from meteorology_conversion import celcius_to_kelvin
 
 from priestley_taylor import delta_Pa_from_Ta_C
 from PTJPL import calculate_relative_surface_wetness
+from PTJPL import RH_THRESHOLD, MIN_FWET
 
 from .constants import *
 from .parameters import MOD16_parameter_from_IGBP
@@ -88,7 +89,9 @@ def PMJPL(
         elevation_km: Union[Raster, np.ndarray] = None,
         delta_Pa: Union[Raster, np.ndarray] = None,
         lambda_Jkg: Union[Raster, np.ndarray] = None,
-        gamma_Jkg: Union[Raster, np.ndarray, float] = None) -> Dict[str, Raster]:
+        gamma_Jkg: Union[Raster, np.ndarray, float] = None,
+        RH_threshold: float = RH_THRESHOLD,
+        min_fwet: float = MIN_FWET) -> Dict[str, Raster]:
     results = {}
 
     if geometry is None and isinstance(NDVI, Raster):
@@ -243,7 +246,12 @@ def PMJPL(
 
     # calculate relative surface wetness (fwet)
     # from relative humidity
-    fwet = calculate_relative_surface_wetness(RH)
+    fwet = calculate_relative_surface_wetness(
+        RH=RH,
+        RH_threshold=RH_threshold,
+        min_fwet=min_fwet
+    )
+    
     results['fwet'] = fwet
 
     logger.info("calculating PM-MOD resistances")
