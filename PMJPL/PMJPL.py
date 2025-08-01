@@ -21,6 +21,7 @@ from verma_net_radiation import verma_net_radiation
 from SEBAL_soil_heat_flux import calculate_SEBAL_soil_heat_flux
 from MCD12C1_2019_v006 import load_MCD12C1_IGBP
 
+from carlson_leaf_area_index import carlson_leaf_area_index
 from carlson_fractional_vegetation_cover import carlson_fractional_vegetation_cover
 from carlson_leaf_area_index import carlson_leaf_area_index
 
@@ -34,25 +35,18 @@ from meteorology_conversion import calculate_surface_pressure
 from meteorology_conversion import celcius_to_kelvin
 
 from priestley_taylor import delta_Pa_from_Ta_C
+from PTJPL import calculate_relative_surface_wetness
 
-from .parameters import MOD16_parameter_from_IGBP
-
-from .calculate_gamma import calculate_gamma
-
-from carlson_leaf_area_index import carlson_leaf_area_index
 from .constants import *
-
-from .fwet import calculate_relative_surface_wetness
+from .parameters import MOD16_parameter_from_IGBP
+from .calculate_gamma import calculate_gamma
 from .soil_moisture_constraint import calculate_fSM
 from .tmin_factor import calculate_tmin_factor
 from .correctance_factor import calculate_correctance_factor
 from .VPD_factor import calculate_VPD_factor
-
 from .canopy_conductance import calculate_canopy_conductance
-
 from .wet_canopy_resistance import calculate_wet_canopy_resistance
 from .canopy_aerodynamic_resistance import calculate_canopy_aerodynamic_resistance
-
 from .wet_soil_evaporation import calculate_wet_soil_evaporation
 from .potential_soil_evaporation import calculate_potential_soil_evaporation
 from .interception import calculate_interception
@@ -73,7 +67,6 @@ DEFAULT_OUTPUT_VARIABLES = [
     'LE_daily',
     'ET_daily_kg'
 ]
-
 
 def PMJPL(
         NDVI: Union[Raster, np.ndarray],
