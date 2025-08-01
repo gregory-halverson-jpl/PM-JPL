@@ -45,7 +45,7 @@ from .constants import *
 from .fwet import calculate_fwet
 from .soil_moisture_constraint import calculate_fSM
 from .tmin_factor import calculate_tmin_factor
-from .correctance_factor import calculate_rcorr
+from .correctance_factor import calculate_correctance_factor
 from .VPD_factor import calculate_VPD_factor
 
 from .canopy_conductance import calculate_canopy_conductance
@@ -316,7 +316,7 @@ def PMJPL(
     # calculate correctance factor (rcorr)
     # for stomatal and cuticular conductances
     # from surface pressure and air temperature
-    rcorr = calculate_rcorr(Ps_Pa, Ta_K)
+    rcorr = calculate_correctance_factor(Ps_Pa, Ta_K)
     results['rcorr'] = rcorr
 
     # query biome-specific mean potential stomatal conductance per unit leaf area
