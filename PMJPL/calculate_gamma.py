@@ -1,6 +1,7 @@
 from typing import Union
 import numpy as np
-from ..evapotranspiration_conversion.evapotranspiration_conversion import lambda_Jkg_from_Ta_C
+
+from daily_evapotranspiration_upscaling import lambda_Jkg_from_Ta_C
 
 from rasters import Raster
 

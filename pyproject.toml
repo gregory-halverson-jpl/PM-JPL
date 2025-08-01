@@ -3,7 +3,7 @@ requires = ["setuptools", "wheel"]
 
 [project]
 name = "PM-JPL"
-version = "1.4.1"
+version = "1.5.0"
 description = "JPL implementation of the MOD16 evapotranspiration algorithm for high resolution instantaneous remote sensing imagery"
 readme = "README.md"
 authors = [
@@ -21,17 +21,20 @@ dependencies = [
     "carlson-fractional-vegetation-cover",
     "carlson-leaf-area-index",
     "check-distribution",
+    "daily-evapotranspiration-upscaling",
     "ECOv002-CMR>=1.0.5",
     "ECOv002-granules>=1.0.3",
     "ECOv003-granules",
     "GEOS5FP>=1.1.1",
     "MCD12C1_2019_v006",
+    "meteorology-conversion",
     "NASADEM",
     "numpy",
     "pandas",
+    "priestley-taylor",
     "rasters>=1.4.6",
     "SEBAL-soil-heat-flux",
-    "sun-angles",
+    "sun-angles>=1.3.0",
     "verma-net-radiation"
 ]
 
