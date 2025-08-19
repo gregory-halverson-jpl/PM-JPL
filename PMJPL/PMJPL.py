@@ -137,8 +137,8 @@ def PMJPL(
 
     elevation_m = elevation_km * 1000.0
 
-    if IGBP is None and geometry is not None:
-        IGBP = load_MCD12C1_IGBP(geometry=geometry)
+    # if IGBP is None and geometry is not None:
+    #     IGBP = load_MCD12C1_IGBP(geometry=geometry)
 
     if Rn is None and albedo is not None and ST_C is not None and emissivity is not None:
         if SWin is None and geometry is not None and time_UTC is not None:
