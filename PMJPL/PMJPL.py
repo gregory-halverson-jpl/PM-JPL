@@ -203,6 +203,7 @@ def PMJPL(
     if G_Wm2 is None:
         raise ValueError("soil heat flux (G) not given")
     
+    check_distribution(G_Wm2, "G_Wm2")
     results["G"] = G_Wm2
 
     LAI = carlson_leaf_area_index(NDVI)
@@ -242,10 +243,12 @@ def PMJPL(
     # as a ratio of kilograms of water to kilograms of air and water
     # from surface pressure and actual water vapor pressure
     specific_humidity = calculate_specific_humidity(Ea_Pa, Ps_Pa)
+    check_distribution(specific_humidity, "specific_humidity")
     results['specific_humidity'] = specific_humidity
 
     # calculate air density (rho) in kilograms per cubic meter
     rho_kgm3 = calculate_air_density(Ps_Pa, Ta_K, specific_humidity)
+    check_distribution(rho_kgm3, "rho_kgm3")
     results["rho_kgm3"] = rho_kgm3
 
     # calculate specific heat capacity of the air (Cp)
@@ -253,6 +256,7 @@ def PMJPL(
     # from specific heat of water vapor (CPW)
     # and specific heat of dry air (CPD)
     Cp_Jkg = calculate_specific_heat(specific_humidity)
+    check_distribution(Cp_Jkg, "Cp_Jkg")
     results["Cp"] = Cp_Jkg
 
     # calculate delta term if it's not given
@@ -260,6 +264,7 @@ def PMJPL(
         # slope of saturation vapor pressure curve in Pascal per degree
         delta_Pa = delta_Pa_from_Ta_C(Ta_C)
 
+    check_distribution(delta_Pa, "delta_Pa")
     results["delta_Pa"] = delta_Pa
 
     # calculate gamma term if it's not given
@@ -282,44 +287,51 @@ def PMJPL(
         min_fwet=min_fwet
     )
     
+    check_distribution(fwet, "fwet")
     results['fwet'] = fwet
 
     logger.info("calculating PM-MOD resistances")
 
     # query leaf conductance to sensible heat (gl_sh) in seconds per meter
     if gl_sh is None:
-        from .leaf_conductance_to_sensible_heat import leaf_conductance_to_sensible_heat
         gl_sh = leaf_conductance_to_sensible_heat(IGBP, geometry)
         
+    check_distribution(gl_sh, "gl_sh")
     results['gl_sh'] = gl_sh
 
     # calculate wet canopy resistance to sensible heat (rhc) in seconds per meter
     rhc = calculate_wet_canopy_resistance(gl_sh, LAI, fwet)
+    check_distribution(rhc, "rhc")
     results['rhc'] = rhc
 
     # calculate resistance to radiative heat transfer through air (rrc)
     rrc = np.float32(rho_kgm3 * Cp_Jkg / (4.0 * SIGMA * Ta_K ** 3.0))
+    check_distribution(rrc, "rrc")
     results['rrc'] = rrc
 
     # calculate aerodynamic resistance (rhrc)
     rhrc = np.float32((rhc * rrc) / (rhc + rrc))
+    check_distribution(rhrc, "rhrc")
     results['rhrc'] = rhrc
 
     # calculate leaf conductance to evaporated water vapor (gl_e_wv)
     if gl_e_wv is None:
-        from .get_gl_e_wv import get_gl_e_wv
         gl_e_wv = get_gl_e_wv(IGBP, geometry, IGBP_upsampling_resolution_meters)
+
+    check_distribution(gl_e_wv, "gl_e_wv")
     results['gl_e_wv'] = gl_e_wv
 
     rvc = calculate_wet_canopy_resistance(gl_e_wv, LAI, fwet)
+    check_distribution(rvc, "rvc")
     results['rvc'] = rvc
 
     # caluclate available radiation to the canopy (Ac)
     Ac = Rn_Wm2 * FVC
+    check_distribution(Ac, "Ac")
     results['Ac'] = Ac
 
     # calculate wet latent heat flux (LEi)
-    LEi = calculate_interception(
+    LEi_Wm2 = calculate_interception(
         delta_Pa=delta_Pa,
         Ac=Ac,
         rho=rho_kgm3,
@@ -330,28 +342,34 @@ def PMJPL(
         fwet=fwet,
         rvc=rvc,
     )
-    results['LEi'] = LEi
+    
+    check_distribution(LEi_Wm2, "LEi_Wm2")
+    results['LEi_Wm2'] = LEi_Wm2
 
     # calculate correctance factor (rcorr)
     rcorr = calculate_correctance_factor(Ps_Pa, Ta_K)
+    check_distribution(rcorr, "rcorr")
     results['rcorr'] = rcorr
 
     # biome-specific mean potential stomatal conductance per unit leaf area
     if CL is None:
-        from .get_CL import get_CL
         CL = get_CL(IGBP, geometry, IGBP_upsampling_resolution_meters)
+
+    check_distribution(CL, "CL")
     results['CL'] = CL
 
     # open minimum temperature by land-cover
     if tmin_open is None:
-        from .get_tmin_open import get_tmin_open
         tmin_open = get_tmin_open(IGBP, geometry, IGBP_upsampling_resolution_meters)
+
+    check_distribution(tmin_open, "tmin_open")
     results['tmin_open'] = tmin_open
 
     # closed minimum temperature by land-cover
     if tmin_close is None:
-        from .get_tmin_close import get_tmin_close
         tmin_close = get_tmin_close(IGBP, geometry, IGBP_upsampling_resolution_meters)
+
+    check_distribution(tmin_close, "tmin_close")
     results['tmin_close'] = tmin_close
 
     check_distribution(Tmin_C, "Tmin_C")
@@ -360,54 +378,65 @@ def PMJPL(
 
     # minimum temperature factor for stomatal conductance
     mTmin = calculate_tmin_factor(Tmin_C, tmin_open, tmin_close)
+    check_distribution(mTmin, "mTmin")
     results['mTmin'] = mTmin
 
     # open vapor pressure deficit by land-cover
     if VPD_open is None:
-        from .get_VPD_open import get_VPD_open
         VPD_open = get_VPD_open(IGBP, geometry, IGBP_upsampling_resolution_meters)
+
+    check_distribution(VPD_open, "VPD_open")
     results['vpd_open'] = VPD_open
 
     # closed vapor pressure deficit by land-cover
     if VPD_close is None:
-        from .get_VPD_close import get_VPD_close
         VPD_close = get_VPD_close(IGBP, geometry, IGBP_upsampling_resolution_meters)
+
+    check_distribution(VPD_close, "VPD_close")
     results['vpd_close'] = VPD_close
 
     # vapor pressure deficit factor for stomatal conductance
     mVPD = calculate_VPD_factor(VPD_open, VPD_close, VPD_Pa)
+    check_distribution(mVPD, "mVPD")
     results['mVPD'] = mVPD
 
     # stomatal conductance (gs1)
     gs1 = CL * mTmin * mVPD * rcorr
+    check_distribution(gs1, "gs1")
     results['gs1'] = gs1
 
     # correct cuticular conductance constant to leaf cuticular conductance (Gcu) using correction factor (rcorr)
     Gcu = CUTICULAR_CONDUCTANCE * rcorr
+    check_distribution(Gcu, "Gcu")
     results['Gcu'] = Gcu
 
     # canopy conductance
     Cc = calculate_canopy_conductance(LAI, fwet, gl_sh, gs1, Gcu)
+    check_distribution(Cc, "Cc")
     results['Cc'] = Cc
 
     # surface resistance to evapotranspiration as inverse of canopy conductance (Cc)
     rs = rt.clip(1.0 / Cc, 0.0, MAX_RESISTANCE)
+    check_distribution(rs, "rs")
     results['rs'] = rs
 
     # convective heat transfer as inverse of leaf conductance to sensible heat (gl_sh)
     rh = 1.0 / gl_sh
+    check_distribution(rs, "rh")
     results['rh'] = rs
 
     # radiative heat transfer (rr)
     rr = rho_kgm3 * Cp_Jkg / (4.0 * SIGMA * Ta_K ** 3)
+    check_distribution(rr, "rr")
     results['rr'] = rr
 
     # parallel resistance (ra)
     ra = (rh * rr) / (rh + rr)
+    check_distribution(ra, "ra")
     results["ra"] = ra
 
     # transpiration
-    LEc = calculate_transpiration(
+    LEc_Wm2 = calculate_transpiration(
         delta_Pa=delta_Pa,
         Ac=Ac,
         rho_kgm3=rho_kgm3,
@@ -418,43 +447,52 @@ def PMJPL(
         fwet=fwet,
         rs=rs,
     )
-    results['LEc'] = LEc
+
+    check_distribution(LEc_Wm2, "LEc_Wm2")
+    results['LEc_Wm2'] = LEc_Wm2
 
     # soil evaporation
     # aerodynamic resistant constraints from land-cover
     if RBL_max is None:
-        from .get_RBL_max import get_RBL_max
         RBL_max = get_RBL_max(IGBP, geometry, IGBP_upsampling_resolution_meters)
+
+    check_distribution(RBL_max, "RBL_max")
     results['rbl_max'] = RBL_max
 
     if RBL_min is None:
-        from .get_RBL_min import get_RBL_min
         RBL_min = get_RBL_min(IGBP, geometry, IGBP_upsampling_resolution_meters)
+
+    check_distribution(RBL_min, "RBL_min")
     results['rbl_min'] = RBL_min
 
     # canopy aerodynamic resistance in seconds per meter
     rtotc = calculate_canopy_aerodynamic_resistance(VPD_Pa, VPD_open, VPD_close, RBL_max, RBL_min)
+    check_distribution(rtotc, "rtotc")
     results['rtotc'] = rtotc
 
     # total aerodynamic resistance
     rtot = rcorr * rtotc
+    check_distribution(rtot, "rtot")
     results['rtot'] = rtot
 
     # resistance to radiative heat transfer through air
     rrs = np.float32(rho_kgm3 * Cp_Jkg / (4.0 * SIGMA * Ta_K ** 3))
+    check_distribution(rrs, "rrs")
     results['rrs'] = rrs
 
     # aerodynamic resistance at the soil surface
     ras = (rtot * rrs) / (rtot + rrs)
+    check_distribution(ras, "ras")
     results['ras'] = ras
 
     # available radiation at the soil
     Asoil = rt.clip((1.0 - FVC) * Rn_Wm2 - G_Wm2, 0.0, None)
+    check_distribution(Asoil, "Asoil")
     results['Asoil'] = Asoil
 
     # separate wet soil evaporation and potential soil evaporation
     # wet soil evaporation
-    LE_soil_wet = calculate_wet_soil_evaporation(
+    wet_soil_evaporation_Wm2 = calculate_wet_soil_evaporation(
         delta_Pa=delta_Pa,
         Asoil=Asoil,
         rho_kgm3=rho_kgm3,
@@ -465,10 +503,12 @@ def PMJPL(
         fwet=fwet,
         rtot=rtot,
     )
-    results['LE_soil_wet'] = LE_soil_wet
+
+    check_distribution(wet_soil_evaporation_Wm2, "wet_soil_evaporation_Wm2")
+    results['wet_soil_evaporation_Wm2'] = wet_soil_evaporation_Wm2
 
     # potential soil evaporation
-    LE_soil_pot = calculate_potential_soil_evaporation(
+    potential_soil_evaporation_Wm2 = calculate_potential_soil_evaporation(
         delta_Pa=delta_Pa,
         Asoil=Asoil,
         rho=rho_kgm3,
@@ -479,19 +519,24 @@ def PMJPL(
         fwet=fwet,
         rtot=rtot,
     )
-    results['LE_soil_pot'] = LE_soil_pot
+
+    check_distribution(potential_soil_evaporation_Wm2, "potential_soil_evaporation_Wm2")
+    results['potential_soil_evaporation_Wm2'] = potential_soil_evaporation_Wm2
 
     # soil moisture constraint
     fSM = calculate_fSM(RH, VPD_Pa)
+    check_distribution(fSM, "fSM")
     results['fSM'] = fSM
 
     # soil evaporation
-    LEs = rt.clip(LE_soil_wet + LE_soil_pot * fSM, 0.0, None)
-    LEs = rt.where(np.isnan(LEs), 0.0, LEs)
-    results['LEs'] = LEs
+    LEs_Wm2 = rt.clip(wet_soil_evaporation_Wm2 + potential_soil_evaporation_Wm2 * fSM, 0.0, None)
+    LEs_Wm2 = rt.where(np.isnan(LEs_Wm2), 0.0, LEs_Wm2)
+    check_distribution(LEs_Wm2, "LEs_Wm2")
+    results['LEs'] = LEs_Wm2
 
     # sum partitions into total latent heat flux
-    LE = rt.clip(LEi + LEc + LEs, 0.0, Rn_Wm2)
-    results['LE'] = LE
+    LE_Wm2 = rt.clip(LEi_Wm2 + LEc_Wm2 + LEs_Wm2, 0.0, Rn_Wm2)
+    check_distribution(LE_Wm2, "LE_Wm2")
+    results['LE_Wm2'] = LE_Wm2
 
     return results
