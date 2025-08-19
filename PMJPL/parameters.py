@@ -3,13 +3,17 @@ from os.path import join, abspath, dirname
 import numpy as np
 import pandas as pd
 
-from rasters import Raster, RasterGeometry
+from rasters import Raster, RasterGeometry, SpatialGeometry
 
 from MCD12C1_2019_v006 import load_MCD12C1_IGBP
 
 LUT = pd.read_csv(join(abspath(dirname(__file__)), 'mod16.csv'))
 
-def MOD16_parameter_from_IGBP(variable: str, IGBP: Union[Raster, np.ndarray] = None, geometry: RasterGeometry = None) -> Union[Raster, np.ndarray]:
+def MOD16_parameter_from_IGBP(
+        variable: str, 
+        IGBP: Union[Raster, np.ndarray] = None, 
+        geometry: SpatialGeometry = None, 
+        resampling="cubic") -> Union[Raster, np.ndarray]:
     """
     Translates the IGBP (International Geosphere-Biosphere Programme) values to the corresponding values in the Look-Up Table (LUT) for a given variable.
 
@@ -28,14 +32,22 @@ def MOD16_parameter_from_IGBP(variable: str, IGBP: Union[Raster, np.ndarray] = N
 
     Returns:
         Union[np.ndarray, Raster]: The translated values.
-
     """
+    if geometry is None and isinstance(IGBP, Raster):
+        geometry = IGBP.geometry
+
+    if isinstance(geometry, RasterGeometry):
+        IGBP_geometry = geometry.UTM(500)
+    else:
+        IGBP_geometry = geometry
+
     if IGBP is None:
-        IGBP = load_MCD12C1_IGBP(geometry=geometry)
+        IGBP = load_MCD12C1_IGBP(geometry=IGBP_geometry)
 
     result = np.float32(np.array(LUT[variable])[np.array(IGBP).astype(int)])
 
     if isinstance(IGBP, Raster):
-        result = Raster(result, geometry=IGBP.geometry)
+        result = Raster(result, geometry=IGBP_geometry)
+        result = result.to_geometry(geometry, resampling=resampling)
     
     return result
