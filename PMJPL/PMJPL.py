@@ -1,3 +1,4 @@
+
 """
 MOD16 model of evapotranspiration
 
@@ -6,13 +7,15 @@ https://landweb.nascom.nasa.gov/QA_WWW/forPage/user_guide/MOD16UsersGuide2016.pd
 
 Developed by Gregory Halverson in the Jet Propulsion Laboratory Year-Round Internship Program (Columbus Technologies and Services), in coordination with the ECOSTRESS mission and master's thesis studies at California State University, Northridge.
 """
+
+# All imports moved to the top
 import logging
 from typing import Dict, Union
 from datetime import datetime
 
 import numpy as np
 import rasters as rt
-from rasters import Raster, RasterGrid, RasterGeometry
+from rasters import Raster, RasterGrid, RasterGeometry, VectorGeometry
 
 from check_distribution import check_distribution
 from GEOS5FP import GEOS5FP
@@ -39,7 +42,7 @@ from PTJPL import calculate_relative_surface_wetness
 from PTJPL import RH_THRESHOLD, MIN_FWET
 
 from .constants import *
-from .parameters import MOD16_parameter_from_IGBP
+from .PMJPL_parameter_from_IGBP import PMJPL_parameter_from_IGBP
 from .calculate_gamma import calculate_gamma
 from .soil_moisture_constraint import calculate_fSM
 from .tmin_factor import calculate_tmin_factor
@@ -52,6 +55,15 @@ from .wet_soil_evaporation import calculate_wet_soil_evaporation
 from .potential_soil_evaporation import calculate_potential_soil_evaporation
 from .interception import calculate_interception
 from .transpiration import calculate_transpiration
+from .leaf_conductance_to_sensible_heat import leaf_conductance_to_sensible_heat
+from .get_CL import get_CL
+from .get_tmin_open import get_tmin_open
+from .get_tmin_close import get_tmin_close
+from .get_VPD_open import get_VPD_open
+from .get_VPD_close import get_VPD_close
+from .get_gl_e_wv import get_gl_e_wv
+from .get_RBL_max import get_RBL_max
+from .get_RBL_min import get_RBL_min
 
 __author__ = 'Qiaozhen Mu, Maosheng Zhao, Steven W. Running, Gregory Halverson'
 
@@ -70,28 +82,39 @@ DEFAULT_OUTPUT_VARIABLES = [
 ]
 
 def PMJPL(
-        NDVI: Union[Raster, np.ndarray],
-        ST_C: Union[Raster, np.ndarray] = None,
-        emissivity: Union[Raster, np.ndarray] = None,
-        albedo: Union[Raster, np.ndarray] = None,
-        Rn: Union[Raster, np.ndarray] = None,
-        G: Union[Raster, np.ndarray] = None,
-        Ta_C: Union[Raster, np.ndarray] = None,
-        Tmin_C: Union[Raster, np.ndarray] = None,
-        RH: Union[Raster, np.ndarray] = None,
-        IGBP: Union[Raster, np.ndarray] = None,
-        FVC: Union[Raster, np.ndarray] = None,
-        geometry: RasterGeometry = None,
-        time_UTC: datetime = None,
-        GEOS5FP_connection: GEOS5FP = None,
-        resampling: str = "nearest",
-        Ps_Pa: Union[Raster, np.ndarray] = None,
-        elevation_km: Union[Raster, np.ndarray] = None,
-        delta_Pa: Union[Raster, np.ndarray] = None,
-        lambda_Jkg: Union[Raster, np.ndarray] = None,
-        gamma_Jkg: Union[Raster, np.ndarray, float] = None,
-        RH_threshold: float = RH_THRESHOLD,
-        min_fwet: float = MIN_FWET) -> Dict[str, Raster]:
+    NDVI: Union[Raster, np.ndarray],
+    ST_C: Union[Raster, np.ndarray] = None,
+    emissivity: Union[Raster, np.ndarray] = None,
+    albedo: Union[Raster, np.ndarray] = None,
+    Rn_Wm2: Union[Raster, np.ndarray] = None,
+    G_Wm2: Union[Raster, np.ndarray] = None,
+    Ta_C: Union[Raster, np.ndarray] = None,
+    Tmin_C: Union[Raster, np.ndarray] = None,
+    RH: Union[Raster, np.ndarray] = None,
+    IGBP: Union[Raster, np.ndarray] = None,
+    FVC: Union[Raster, np.ndarray] = None,
+    geometry: RasterGeometry = None,
+    time_UTC: datetime = None,
+    GEOS5FP_connection: GEOS5FP = None,
+    resampling: str = "nearest",
+    Ps_Pa: Union[Raster, np.ndarray] = None,
+    elevation_km: Union[Raster, np.ndarray] = None,
+    delta_Pa: Union[Raster, np.ndarray] = None,
+    lambda_Jkg: Union[Raster, np.ndarray] = None,
+    gamma_Jkg: Union[Raster, np.ndarray, float] = None,
+    gl_sh: Union[Raster, np.ndarray] = None,
+    CL: Union[Raster, np.ndarray] = None,
+    tmin_open: Union[Raster, np.ndarray] = None,
+    tmin_close: Union[Raster, np.ndarray] = None,
+    VPD_open: Union[Raster, np.ndarray] = None,
+    VPD_close: Union[Raster, np.ndarray] = None,
+    gl_e_wv: Union[Raster, np.ndarray] = None,
+    RBL_max: Union[Raster, np.ndarray] = None,
+    RBL_min: Union[Raster, np.ndarray] = None,
+    RH_threshold: float = RH_THRESHOLD,
+    min_fwet: float = MIN_FWET,
+    IGBP_upsampling_resolution_meters: float = IGBP_UPSAMPLING_RESOLUTION_METERS
+    ) -> Dict[str, Raster]:
     results = {}
 
     if geometry is None and isinstance(NDVI, Raster):
@@ -138,9 +161,16 @@ def PMJPL(
     elevation_m = elevation_km * 1000.0
 
     if IGBP is None and geometry is not None:
-        IGBP = load_MCD12C1_IGBP(geometry=geometry)
+        if isinstance(geometry, VectorGeometry):
+            IGBP_geometry = geometry           
+        elif isinstance(geometry, RasterGeometry):
+            IGBP_geometry = geometry.UTM(IGBP_upsampling_resolution_meters)
+        else:
+            raise ValueError(f"invalid geometry type for IGBP retrieval: {type(geometry)}")
 
-    if Rn is None and albedo is not None and ST_C is not None and emissivity is not None:
+        IGBP = load_MCD12C1_IGBP(geometry=IGBP_geometry)
+
+    if Rn_Wm2 is None and albedo is not None and ST_C is not None and emissivity is not None:
         if SWin is None and geometry is not None and time_UTC is not None:
             SWin = GEOS5FP_connection.SWin(
                 time_UTC=time_UTC,
@@ -157,23 +187,24 @@ def PMJPL(
             RH=RH
         )
 
-        Rn = Rn_results["Rn"]
+        Rn_Wm2 = Rn_results["Rn_Wm2"]
 
-    if Rn is None:
+    if Rn_Wm2 is None:
         raise ValueError("net radiation (Rn) not given")
 
-    if G is None and Rn is not None and ST_C is not None and NDVI is not None and albedo is not None:
-        G = calculate_SEBAL_soil_heat_flux(
-            Rn=Rn,
+    if G_Wm2 is None and Rn_Wm2 is not None and ST_C is not None and NDVI is not None and albedo is not None:
+        G_Wm2 = calculate_SEBAL_soil_heat_flux(
+            Rn=Rn_Wm2,
             ST_C=ST_C,
             NDVI=NDVI,
             albedo=albedo
         )
 
-    if G is None:
+    if G_Wm2 is None:
         raise ValueError("soil heat flux (G) not given")
     
-    results["G"] = G
+    check_distribution(G_Wm2, "G_Wm2")
+    results["G"] = G_Wm2
 
     LAI = carlson_leaf_area_index(NDVI)
 
@@ -212,10 +243,12 @@ def PMJPL(
     # as a ratio of kilograms of water to kilograms of air and water
     # from surface pressure and actual water vapor pressure
     specific_humidity = calculate_specific_humidity(Ea_Pa, Ps_Pa)
+    check_distribution(specific_humidity, "specific_humidity")
     results['specific_humidity'] = specific_humidity
 
     # calculate air density (rho) in kilograms per cubic meter
     rho_kgm3 = calculate_air_density(Ps_Pa, Ta_K, specific_humidity)
+    check_distribution(rho_kgm3, "rho_kgm3")
     results["rho_kgm3"] = rho_kgm3
 
     # calculate specific heat capacity of the air (Cp)
@@ -223,6 +256,7 @@ def PMJPL(
     # from specific heat of water vapor (CPW)
     # and specific heat of dry air (CPD)
     Cp_Jkg = calculate_specific_heat(specific_humidity)
+    check_distribution(Cp_Jkg, "Cp_Jkg")
     results["Cp"] = Cp_Jkg
 
     # calculate delta term if it's not given
@@ -230,6 +264,7 @@ def PMJPL(
         # slope of saturation vapor pressure curve in Pascal per degree
         delta_Pa = delta_Pa_from_Ta_C(Ta_C)
 
+    check_distribution(delta_Pa, "delta_Pa")
     results["delta_Pa"] = delta_Pa
 
     # calculate gamma term if it's not given
@@ -252,54 +287,51 @@ def PMJPL(
         min_fwet=min_fwet
     )
     
+    check_distribution(fwet, "fwet")
     results['fwet'] = fwet
 
     logger.info("calculating PM-MOD resistances")
 
     # query leaf conductance to sensible heat (gl_sh) in seconds per meter
-    gl_sh = MOD16_parameter_from_IGBP(
-        variable="gl_sh",
-        IGBP=IGBP
-    )
-
+    if gl_sh is None:
+        gl_sh = leaf_conductance_to_sensible_heat(IGBP, geometry)
+        
+    check_distribution(gl_sh, "gl_sh")
     results['gl_sh'] = gl_sh
 
     # calculate wet canopy resistance to sensible heat (rhc) in seconds per meter
-    # from leaf conductance to sensible heat (gl_sh), LAI, and relative surface wetness (fwet)
     rhc = calculate_wet_canopy_resistance(gl_sh, LAI, fwet)
+    check_distribution(rhc, "rhc")
     results['rhc'] = rhc
 
     # calculate resistance to radiative heat transfer through air (rrc)
     rrc = np.float32(rho_kgm3 * Cp_Jkg / (4.0 * SIGMA * Ta_K ** 3.0))
+    check_distribution(rrc, "rrc")
     results['rrc'] = rrc
 
     # calculate aerodynamic resistance (rhrc)
-    # in seconds per meter
-    # from wet canopy resistance to sensible heat
-    # and resistance to radiative heat transfer through air
     rhrc = np.float32((rhc * rrc) / (rhc + rrc))
+    check_distribution(rhrc, "rhrc")
     results['rhrc'] = rhrc
 
     # calculate leaf conductance to evaporated water vapor (gl_e_wv)
-    gl_e_wv = MOD16_parameter_from_IGBP(
-        variable="gl_e_wv",
-        IGBP=IGBP
-    )
+    if gl_e_wv is None:
+        gl_e_wv = get_gl_e_wv(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
+    check_distribution(gl_e_wv, "gl_e_wv")
     results['gl_e_wv'] = gl_e_wv
 
     rvc = calculate_wet_canopy_resistance(gl_e_wv, LAI, fwet)
+    check_distribution(rvc, "rvc")
     results['rvc'] = rvc
 
     # caluclate available radiation to the canopy (Ac)
-    # in watts per square meter
-    # this is the same as net radiation to the canopy in PT-JPL
-    Ac = Rn * FVC
+    Ac = Rn_Wm2 * FVC
+    check_distribution(Ac, "Ac")
     results['Ac'] = Ac
 
     # calculate wet latent heat flux (LEi)
-    # in watts per square meter
-    LEi = calculate_interception(
+    LEi_Wm2 = calculate_interception(
         delta_Pa=delta_Pa,
         Ac=Ac,
         rho=rho_kgm3,
@@ -309,101 +341,102 @@ def PMJPL(
         rhrc=rhrc,
         fwet=fwet,
         rvc=rvc,
-        # gamma_Jkg=gamma_Jkg
     )
-
-    results['LEi'] = LEi
+    
+    check_distribution(LEi_Wm2, "LEi_Wm2")
+    results['LEi_Wm2'] = LEi_Wm2
 
     # calculate correctance factor (rcorr)
-    # for stomatal and cuticular conductances
-    # from surface pressure and air temperature
     rcorr = calculate_correctance_factor(Ps_Pa, Ta_K)
+    check_distribution(rcorr, "rcorr")
     results['rcorr'] = rcorr
 
-    # query biome-specific mean potential stomatal conductance per unit leaf area
-    CL = MOD16_parameter_from_IGBP(
-        variable="cl",
-        IGBP=IGBP
-    )
+    # biome-specific mean potential stomatal conductance per unit leaf area
+    if CL is None:
+        CL = get_CL(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
+    check_distribution(CL, "CL")
     results['CL'] = CL
 
-    # query open minimum temperature by land-cover
-    tmin_open = MOD16_parameter_from_IGBP(
-        variable="tmin_open",
-        IGBP=IGBP
-    )
+    # open minimum temperature by land-cover
+    if tmin_open is None:
+        tmin_open = get_tmin_open(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
+    check_distribution(tmin_open, "tmin_open")
     results['tmin_open'] = tmin_open
 
-    # query closed minimum temperature by land-cover
-    tmin_close = MOD16_parameter_from_IGBP(
-        variable="tmin_close",
-        IGBP=IGBP
-    )
+    # closed minimum temperature by land-cover
+    if tmin_close is None:
+        tmin_close = get_tmin_close(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
+    check_distribution(tmin_close, "tmin_close")
     results['tmin_close'] = tmin_close
 
     check_distribution(Tmin_C, "Tmin_C")
     check_distribution(tmin_open, "tmin_open")
     check_distribution(tmin_close, "tmin_close")
 
-    # calculate minimum temperature factor for stomatal conductance
+    # minimum temperature factor for stomatal conductance
     mTmin = calculate_tmin_factor(Tmin_C, tmin_open, tmin_close)
+    check_distribution(mTmin, "mTmin")
     results['mTmin'] = mTmin
 
-    # query open vapor pressure deficit by land-cover
-    VPD_open = MOD16_parameter_from_IGBP(
-        variable="vpd_open",
-        IGBP=IGBP
-    )
+    # open vapor pressure deficit by land-cover
+    if VPD_open is None:
+        VPD_open = get_VPD_open(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
+    check_distribution(VPD_open, "VPD_open")
     results['vpd_open'] = VPD_open
 
-    # query closed vapor pressure deficit by land-cover
-    VPD_close = MOD16_parameter_from_IGBP(
-        variable="vpd_close",
-        IGBP=IGBP
-    )
+    # closed vapor pressure deficit by land-cover
+    if VPD_close is None:
+        VPD_close = get_VPD_close(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
+    check_distribution(VPD_close, "VPD_close")
     results['vpd_close'] = VPD_close
 
-    # calculate vapor pressure deficit factor for stomatal conductance
+    # vapor pressure deficit factor for stomatal conductance
     mVPD = calculate_VPD_factor(VPD_open, VPD_close, VPD_Pa)
+    check_distribution(mVPD, "mVPD")
     results['mVPD'] = mVPD
 
-    # calculate stomatal conductance (gs1)
+    # stomatal conductance (gs1)
     gs1 = CL * mTmin * mVPD * rcorr
+    check_distribution(gs1, "gs1")
     results['gs1'] = gs1
 
     # correct cuticular conductance constant to leaf cuticular conductance (Gcu) using correction factor (rcorr)
     Gcu = CUTICULAR_CONDUCTANCE * rcorr
+    check_distribution(Gcu, "Gcu")
     results['Gcu'] = Gcu
 
-    # calculate canopy conductance
-    # equivalent to g_canopy
+    # canopy conductance
     Cc = calculate_canopy_conductance(LAI, fwet, gl_sh, gs1, Gcu)
+    check_distribution(Cc, "Cc")
     results['Cc'] = Cc
 
-    # calculate surface resistance to evapotranspiration as inverse of canopy conductance (Cc)
+    # surface resistance to evapotranspiration as inverse of canopy conductance (Cc)
     rs = rt.clip(1.0 / Cc, 0.0, MAX_RESISTANCE)
+    check_distribution(rs, "rs")
     results['rs'] = rs
 
-    # calculate convective heat transfer as inverse of leaf conductance to sensible heat (gl_sh)
+    # convective heat transfer as inverse of leaf conductance to sensible heat (gl_sh)
     rh = 1.0 / gl_sh
+    check_distribution(rs, "rh")
     results['rh'] = rs
 
-    # calculate radiative heat transfer (rr)
+    # radiative heat transfer (rr)
     rr = rho_kgm3 * Cp_Jkg / (4.0 * SIGMA * Ta_K ** 3)
+    check_distribution(rr, "rr")
     results['rr'] = rr
 
-    # calculate parallel resistance (ra)
-    # MOD16 user guide is not clear about what to call this
+    # parallel resistance (ra)
     ra = (rh * rr) / (rh + rr)
+    check_distribution(ra, "ra")
     results["ra"] = ra
 
-    # calculate transpiration
-    LEc = calculate_transpiration(
+    # transpiration
+    LEc_Wm2 = calculate_transpiration(
         delta_Pa=delta_Pa,
         Ac=Ac,
         rho_kgm3=rho_kgm3,
@@ -413,53 +446,53 @@ def PMJPL(
         ra=ra,
         fwet=fwet,
         rs=rs,
-        # gamma_Jkg=gamma_Jkg
     )
 
-    results['LEc'] = LEc
+    check_distribution(LEc_Wm2, "LEc_Wm2")
+    results['LEc_Wm2'] = LEc_Wm2
 
     # soil evaporation
+    # aerodynamic resistant constraints from land-cover
+    if RBL_max is None:
+        RBL_max = get_RBL_max(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
-    # query aerodynamic resistant constraints from land-cover
-    RBL_max = MOD16_parameter_from_IGBP(
-        variable="rbl_max",
-        IGBP=IGBP
-    )
-
+    check_distribution(RBL_max, "RBL_max")
     results['rbl_max'] = RBL_max
 
-    RBL_min = MOD16_parameter_from_IGBP(
-        variable="rbl_min",
-        IGBP=IGBP
-    )
+    if RBL_min is None:
+        RBL_min = get_RBL_min(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
+    check_distribution(RBL_min, "RBL_min")
     results['rbl_min'] = RBL_min
 
-    # calculate canopy aerodynamic resistance in seconds per meter
+    # canopy aerodynamic resistance in seconds per meter
     rtotc = calculate_canopy_aerodynamic_resistance(VPD_Pa, VPD_open, VPD_close, RBL_max, RBL_min)
+    check_distribution(rtotc, "rtotc")
     results['rtotc'] = rtotc
 
-    # calculate total aerodynamic resistance
-    # by applying correction to total canopy resistance
+    # total aerodynamic resistance
     rtot = rcorr * rtotc
+    check_distribution(rtot, "rtot")
     results['rtot'] = rtot
 
-    # calculate resistance to radiative heat transfer through air
+    # resistance to radiative heat transfer through air
     rrs = np.float32(rho_kgm3 * Cp_Jkg / (4.0 * SIGMA * Ta_K ** 3))
+    check_distribution(rrs, "rrs")
     results['rrs'] = rrs
 
-    # calculate aerodynamic resistance at the soil surface
+    # aerodynamic resistance at the soil surface
     ras = (rtot * rrs) / (rtot + rrs)
+    check_distribution(ras, "ras")
     results['ras'] = ras
 
-    # calculate available radiation at the soil
-    Asoil = rt.clip((1.0 - FVC) * Rn - G, 0.0, None)
+    # available radiation at the soil
+    Asoil = rt.clip((1.0 - FVC) * Rn_Wm2 - G_Wm2, 0.0, None)
+    check_distribution(Asoil, "Asoil")
     results['Asoil'] = Asoil
 
     # separate wet soil evaporation and potential soil evaporation
-
-    # calculate wet soil evaporation
-    LE_soil_wet = calculate_wet_soil_evaporation(
+    # wet soil evaporation
+    wet_soil_evaporation_Wm2 = calculate_wet_soil_evaporation(
         delta_Pa=delta_Pa,
         Asoil=Asoil,
         rho_kgm3=rho_kgm3,
@@ -469,13 +502,13 @@ def PMJPL(
         ras=ras,
         fwet=fwet,
         rtot=rtot,
-        # gamma_Jkg=gamma_Jkg
     )
 
-    results['LE_soil_wet'] = LE_soil_wet
+    check_distribution(wet_soil_evaporation_Wm2, "wet_soil_evaporation_Wm2")
+    results['wet_soil_evaporation_Wm2'] = wet_soil_evaporation_Wm2
 
-    # calculate potential soil evaporation
-    LE_soil_pot = calculate_potential_soil_evaporation(
+    # potential soil evaporation
+    potential_soil_evaporation_Wm2 = calculate_potential_soil_evaporation(
         delta_Pa=delta_Pa,
         Asoil=Asoil,
         rho=rho_kgm3,
@@ -485,24 +518,25 @@ def PMJPL(
         ras=ras,
         fwet=fwet,
         rtot=rtot,
-        # gamma_Jkg=gamma_Jkg
     )
 
-    results['LE_soil_pot'] = LE_soil_pot
+    check_distribution(potential_soil_evaporation_Wm2, "potential_soil_evaporation_Wm2")
+    results['potential_soil_evaporation_Wm2'] = potential_soil_evaporation_Wm2
 
-    # calculate soil moisture constraint
+    # soil moisture constraint
     fSM = calculate_fSM(RH, VPD_Pa)
+    check_distribution(fSM, "fSM")
     results['fSM'] = fSM
 
-    # calculate soil evaporation
-    LEs = rt.clip(LE_soil_wet + LE_soil_pot * fSM, 0.0, None)
-
-    # fill soil evaporation with zero
-    LEs = rt.where(np.isnan(LEs), 0.0, LEs)
-    results['LEs'] = LEs
+    # soil evaporation
+    LEs_Wm2 = rt.clip(wet_soil_evaporation_Wm2 + potential_soil_evaporation_Wm2 * fSM, 0.0, None)
+    LEs_Wm2 = rt.where(np.isnan(LEs_Wm2), 0.0, LEs_Wm2)
+    check_distribution(LEs_Wm2, "LEs_Wm2")
+    results['LEs'] = LEs_Wm2
 
     # sum partitions into total latent heat flux
-    LE = rt.clip(LEi + LEc + LEs, 0.0, Rn)
-    results['LE'] = LE
+    LE_Wm2 = rt.clip(LEi_Wm2 + LEc_Wm2 + LEs_Wm2, 0.0, Rn_Wm2)
+    check_distribution(LE_Wm2, "LE_Wm2")
+    results['LE_Wm2'] = LE_Wm2
 
     return results
