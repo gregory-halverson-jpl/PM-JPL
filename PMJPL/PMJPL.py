@@ -12,7 +12,7 @@ from datetime import datetime
 
 import numpy as np
 import rasters as rt
-from rasters import Raster, RasterGrid, RasterGeometry
+from rasters import Raster, RasterGrid, RasterGeometry, VectorGeometry
 
 from check_distribution import check_distribution
 from GEOS5FP import GEOS5FP
@@ -39,7 +39,7 @@ from PTJPL import calculate_relative_surface_wetness
 from PTJPL import RH_THRESHOLD, MIN_FWET
 
 from .constants import *
-from .parameters import MOD16_parameter_from_IGBP
+from .PMJPL_parameter_from_IGBP import PMJPL_parameter_from_IGBP
 from .calculate_gamma import calculate_gamma
 from .soil_moisture_constraint import calculate_fSM
 from .tmin_factor import calculate_tmin_factor
@@ -52,6 +52,7 @@ from .wet_soil_evaporation import calculate_wet_soil_evaporation
 from .potential_soil_evaporation import calculate_potential_soil_evaporation
 from .interception import calculate_interception
 from .transpiration import calculate_transpiration
+from .leaf_conductance_to_sensible_heat import leaf_conductance_to_sensible_heat
 
 __author__ = 'Qiaozhen Mu, Maosheng Zhao, Steven W. Running, Gregory Halverson'
 
@@ -90,6 +91,7 @@ def PMJPL(
         delta_Pa: Union[Raster, np.ndarray] = None,
         lambda_Jkg: Union[Raster, np.ndarray] = None,
         gamma_Jkg: Union[Raster, np.ndarray, float] = None,
+        gl_sh: Union[Raster, np.ndarray] = None,
         RH_threshold: float = RH_THRESHOLD,
         min_fwet: float = MIN_FWET) -> Dict[str, Raster]:
     results = {}
@@ -139,11 +141,13 @@ def PMJPL(
 
     if IGBP is None and geometry is not None:
         if isinstance(geometry, VectorGeometry):
-            IGBP = load_MCD12C1_IGBP(geometry=geometry)
+            IGBP_geometry = geometry           
         elif isinstance(geometry, RasterGeometry):
-            IGBP = load_MCD12C1_IGBP(geometry=geometry.UTM(500))
+            IGBP_geometry = geometry.UTM(500)
         else:
             raise ValueError(f"invalid geometry type for IGBP retrieval: {type(geometry)}")
+
+        IGBP = load_MCD12C1_IGBP(geometry=IGBP_geometry)
 
     if Rn is None and albedo is not None and ST_C is not None and emissivity is not None:
         if SWin is None and geometry is not None and time_UTC is not None:
@@ -262,11 +266,8 @@ def PMJPL(
     logger.info("calculating PM-MOD resistances")
 
     # query leaf conductance to sensible heat (gl_sh) in seconds per meter
-    gl_sh = MOD16_parameter_from_IGBP(
-        variable="gl_sh",
-        IGBP=IGBP,
-        geometry=geometry
-    )
+    if gl_sh is None:
+        gl_sh = leaf_conductance_to_sensible_heat(IGBP, geometry)
 
     results['gl_sh'] = gl_sh
 
@@ -287,7 +288,7 @@ def PMJPL(
     results['rhrc'] = rhrc
 
     # calculate leaf conductance to evaporated water vapor (gl_e_wv)
-    gl_e_wv = MOD16_parameter_from_IGBP(
+    gl_e_wv = PMJPL_parameter_from_IGBP(
         variable="gl_e_wv",
         IGBP=IGBP,
         geometry=geometry
@@ -328,7 +329,7 @@ def PMJPL(
     results['rcorr'] = rcorr
 
     # query biome-specific mean potential stomatal conductance per unit leaf area
-    CL = MOD16_parameter_from_IGBP(
+    CL = PMJPL_parameter_from_IGBP(
         variable="cl",
         IGBP=IGBP,
         geometry=geometry
@@ -337,7 +338,7 @@ def PMJPL(
     results['CL'] = CL
 
     # query open minimum temperature by land-cover
-    tmin_open = MOD16_parameter_from_IGBP(
+    tmin_open = PMJPL_parameter_from_IGBP(
         variable="tmin_open",
         IGBP=IGBP,
         geometry=geometry
@@ -346,7 +347,7 @@ def PMJPL(
     results['tmin_open'] = tmin_open
 
     # query closed minimum temperature by land-cover
-    tmin_close = MOD16_parameter_from_IGBP(
+    tmin_close = PMJPL_parameter_from_IGBP(
         variable="tmin_close",
         IGBP=IGBP,
         geometry=geometry
@@ -363,7 +364,7 @@ def PMJPL(
     results['mTmin'] = mTmin
 
     # query open vapor pressure deficit by land-cover
-    VPD_open = MOD16_parameter_from_IGBP(
+    VPD_open = PMJPL_parameter_from_IGBP(
         variable="vpd_open",
         IGBP=IGBP,
         geometry=geometry
@@ -372,7 +373,7 @@ def PMJPL(
     results['vpd_open'] = VPD_open
 
     # query closed vapor pressure deficit by land-cover
-    VPD_close = MOD16_parameter_from_IGBP(
+    VPD_close = PMJPL_parameter_from_IGBP(
         variable="vpd_close",
         IGBP=IGBP,
         geometry=geometry
@@ -433,7 +434,7 @@ def PMJPL(
     # soil evaporation
 
     # query aerodynamic resistant constraints from land-cover
-    RBL_max = MOD16_parameter_from_IGBP(
+    RBL_max = PMJPL_parameter_from_IGBP(
         variable="rbl_max",
         IGBP=IGBP,
         geometry=geometry
@@ -441,7 +442,7 @@ def PMJPL(
 
     results['rbl_max'] = RBL_max
 
-    RBL_min = MOD16_parameter_from_IGBP(
+    RBL_min = PMJPL_parameter_from_IGBP(
         variable="rbl_min",
         IGBP=IGBP,
         geometry=geometry
