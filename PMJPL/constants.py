@@ -1,6 +1,7 @@
 from priestley_taylor import GAMMA_PA
 
 IGBP_PARAMETER_RESAMPLING = "cubic"
+IGBP_UPSAMPLING_RESOLUTION_METERS = 5000
 
 # TODO need to defend picking arbitrary maximum to avoid extreme values
 MIN_RESISTANCE = 0.0

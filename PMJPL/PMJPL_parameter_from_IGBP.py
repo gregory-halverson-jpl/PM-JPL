@@ -14,7 +14,8 @@ LUT = pd.read_csv(join(abspath(dirname(__file__)), 'mod16.csv'))
 def PMJPL_parameter_from_IGBP(
         variable: str, 
         IGBP: Union[Raster, np.ndarray] = None, 
-        geometry: SpatialGeometry = None, 
+        geometry: SpatialGeometry = None,
+        IGBP_upsampling_resolution_meters: int = IGBP_UPSAMPLING_RESOLUTION_METERS,
         resampling=IGBP_PARAMETER_RESAMPLING) -> Union[Raster, np.ndarray]:
     """
     Translates the IGBP (International Geosphere-Biosphere Programme) values to the corresponding values in the Look-Up Table (LUT) for a given variable.
@@ -39,7 +40,7 @@ def PMJPL_parameter_from_IGBP(
         geometry = IGBP.geometry
 
     if isinstance(geometry, RasterGeometry):
-        IGBP_geometry = geometry.UTM(500)
+        IGBP_geometry = geometry.UTM(IGBP_upsampling_resolution_meters)
     else:
         IGBP_geometry = geometry
 

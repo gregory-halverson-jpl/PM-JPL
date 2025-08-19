@@ -93,7 +93,9 @@ def PMJPL(
         gamma_Jkg: Union[Raster, np.ndarray, float] = None,
         gl_sh: Union[Raster, np.ndarray] = None,
         RH_threshold: float = RH_THRESHOLD,
-        min_fwet: float = MIN_FWET) -> Dict[str, Raster]:
+        min_fwet: float = MIN_FWET,
+        IGBP_upsampling_resolution_meters: float = IGBP_UPSAMPLING_RESOLUTION_METERS
+    ) -> Dict[str, Raster]:
     results = {}
 
     if geometry is None and isinstance(NDVI, Raster):
@@ -143,7 +145,7 @@ def PMJPL(
         if isinstance(geometry, VectorGeometry):
             IGBP_geometry = geometry           
         elif isinstance(geometry, RasterGeometry):
-            IGBP_geometry = geometry.UTM(500)
+            IGBP_geometry = geometry.UTM(IGBP_upsampling_resolution_meters)
         else:
             raise ValueError(f"invalid geometry type for IGBP retrieval: {type(geometry)}")
 
@@ -291,7 +293,8 @@ def PMJPL(
     gl_e_wv = PMJPL_parameter_from_IGBP(
         variable="gl_e_wv",
         IGBP=IGBP,
-        geometry=geometry
+        geometry=geometry,
+        IGBP_upsampling_resolution_meters=IGBP_upsampling_resolution_meters
     )
 
     results['gl_e_wv'] = gl_e_wv
@@ -332,7 +335,8 @@ def PMJPL(
     CL = PMJPL_parameter_from_IGBP(
         variable="cl",
         IGBP=IGBP,
-        geometry=geometry
+        geometry=geometry,
+        IGBP_upsampling_resolution_meters=IGBP_upsampling_resolution_meters
     )
 
     results['CL'] = CL
@@ -341,7 +345,8 @@ def PMJPL(
     tmin_open = PMJPL_parameter_from_IGBP(
         variable="tmin_open",
         IGBP=IGBP,
-        geometry=geometry
+        geometry=geometry,
+        IGBP_upsampling_resolution_meters=IGBP_upsampling_resolution_meters
     )
 
     results['tmin_open'] = tmin_open
@@ -350,7 +355,8 @@ def PMJPL(
     tmin_close = PMJPL_parameter_from_IGBP(
         variable="tmin_close",
         IGBP=IGBP,
-        geometry=geometry
+        geometry=geometry,
+        IGBP_upsampling_resolution_meters=IGBP_upsampling_resolution_meters
     )
 
     results['tmin_close'] = tmin_close
@@ -367,7 +373,8 @@ def PMJPL(
     VPD_open = PMJPL_parameter_from_IGBP(
         variable="vpd_open",
         IGBP=IGBP,
-        geometry=geometry
+        geometry=geometry,
+        IGBP_upsampling_resolution_meters=IGBP_upsampling_resolution_meters
     )
 
     results['vpd_open'] = VPD_open
@@ -376,7 +383,8 @@ def PMJPL(
     VPD_close = PMJPL_parameter_from_IGBP(
         variable="vpd_close",
         IGBP=IGBP,
-        geometry=geometry
+        geometry=geometry,
+        IGBP_upsampling_resolution_meters=IGBP_upsampling_resolution_meters
     )
 
     results['vpd_close'] = VPD_close
@@ -437,7 +445,8 @@ def PMJPL(
     RBL_max = PMJPL_parameter_from_IGBP(
         variable="rbl_max",
         IGBP=IGBP,
-        geometry=geometry
+        geometry=geometry,
+        IGBP_upsampling_resolution_meters=IGBP_upsampling_resolution_meters
     )
 
     results['rbl_max'] = RBL_max
@@ -445,7 +454,8 @@ def PMJPL(
     RBL_min = PMJPL_parameter_from_IGBP(
         variable="rbl_min",
         IGBP=IGBP,
-        geometry=geometry
+        geometry=geometry,
+        IGBP_upsampling_resolution_meters=IGBP_upsampling_resolution_meters
     )
 
     results['rbl_min'] = RBL_min
