@@ -45,7 +45,7 @@ from .constants import *
 from .PMJPL_parameter_from_IGBP import PMJPL_parameter_from_IGBP
 from .calculate_gamma import calculate_gamma
 from .soil_moisture_constraint import calculate_fSM
-from .tmin_factor import Tmin_factor
+from .Tmin_factor import Tmin_factor
 from .correctance_factor import calculate_correctance_factor
 from .VPD_factor import calculate_VPD_factor
 from .canopy_conductance import calculate_canopy_conductance
@@ -82,40 +82,135 @@ DEFAULT_OUTPUT_VARIABLES = [
 ]
 
 def PMJPL(
-    NDVI: Union[Raster, np.ndarray],
-    ST_C: Union[Raster, np.ndarray] = None,
-    emissivity: Union[Raster, np.ndarray] = None,
-    albedo: Union[Raster, np.ndarray] = None,
-    Rn_Wm2: Union[Raster, np.ndarray] = None,
-    G_Wm2: Union[Raster, np.ndarray] = None,
-    Ta_C: Union[Raster, np.ndarray] = None,
-    Tmin_C: Union[Raster, np.ndarray] = None,
-    RH: Union[Raster, np.ndarray] = None,
-    IGBP: Union[Raster, np.ndarray] = None,
-    FVC: Union[Raster, np.ndarray] = None,
-    geometry: RasterGeometry = None,
-    time_UTC: datetime = None,
-    GEOS5FP_connection: GEOS5FP = None,
-    resampling: str = "nearest",
-    Ps_Pa: Union[Raster, np.ndarray] = None,
-    elevation_km: Union[Raster, np.ndarray] = None,
-    delta_Pa: Union[Raster, np.ndarray] = None,
-    lambda_Jkg: Union[Raster, np.ndarray] = None,
-    gamma_Jkg: Union[Raster, np.ndarray, float] = None,
-    gl_sh: Union[Raster, np.ndarray] = None,
-    CL: Union[Raster, np.ndarray] = None,
-    Tmin_open: Union[Raster, np.ndarray] = None,
-    Tmin_closed: Union[Raster, np.ndarray] = None,
-    VPD_open: Union[Raster, np.ndarray] = None,
-    VPD_closed: Union[Raster, np.ndarray] = None,
-    gl_e_wv: Union[Raster, np.ndarray] = None,
-    RBL_max: Union[Raster, np.ndarray] = None,
-    RBL_min: Union[Raster, np.ndarray] = None,
-    RH_threshold: float = RH_THRESHOLD,
-    min_fwet: float = MIN_FWET,
-    IGBP_upsampling_resolution_meters: float = IGBP_UPSAMPLING_RESOLUTION_METERS
-    ) -> Dict[str, Raster]:
-    results = {}
+        NDVI: Union[Raster, np.ndarray],
+        ST_C: Union[Raster, np.ndarray] = None,
+        emissivity: Union[Raster, np.ndarray] = None,
+        albedo: Union[Raster, np.ndarray] = None,
+        Rn_Wm2: Union[Raster, np.ndarray] = None,
+        G_Wm2: Union[Raster, np.ndarray] = None,
+        Ta_C: Union[Raster, np.ndarray] = None,
+        Tmin_C: Union[Raster, np.ndarray] = None,
+        RH: Union[Raster, np.ndarray] = None,
+        IGBP: Union[Raster, np.ndarray] = None,
+        FVC: Union[Raster, np.ndarray] = None,
+        geometry: RasterGeometry = None,
+        time_UTC: datetime = None,
+        GEOS5FP_connection: GEOS5FP = None,
+        resampling: str = "nearest",
+        Ps_Pa: Union[Raster, np.ndarray] = None,
+        elevation_km: Union[Raster, np.ndarray] = None,
+        delta_Pa: Union[Raster, np.ndarray] = None,
+        lambda_Jkg: Union[Raster, np.ndarray] = None,
+        gamma_Jkg: Union[Raster, np.ndarray, float] = None,
+        gl_sh: Union[Raster, np.ndarray] = None,
+        CL: Union[Raster, np.ndarray] = None,
+        Tmin_open: Union[Raster, np.ndarray] = None,
+        Tmin_closed: Union[Raster, np.ndarray] = None,
+        VPD_open: Union[Raster, np.ndarray] = None,
+        VPD_closed: Union[Raster, np.ndarray] = None,
+        gl_e_wv: Union[Raster, np.ndarray] = None,
+        RBL_max: Union[Raster, np.ndarray] = None,
+        RBL_min: Union[Raster, np.ndarray] = None,
+        RH_threshold: float = RH_THRESHOLD,
+        min_fwet: float = MIN_FWET,
+        IGBP_upsampling_resolution_meters: float = IGBP_UPSAMPLING_RESOLUTION_METERS
+        ) -> Dict[str, Raster]:
+    """
+    MOD16 Penman-Monteith Evapotranspiration Model (Version 1.5, Collection 6)
+
+    Implements the MOD16 algorithm for partitioning daily latent heat flux (LE) into canopy transpiration, soil evaporation, and wet canopy evaporation, following Mu et al. (2011) and the MOD16 User Guide (2016).
+
+    Scientific Overview:
+    -------------------
+    This function estimates daily evapotranspiration (ET) and its components using satellite-derived vegetation indices, land cover, and meteorological data. It applies the Penman-Monteith equation, partitioning energy and resistances according to biophysical and meteorological constraints. The model is designed for gridded raster inputs but supports numpy arrays for flexibility.
+
+    Key Steps:
+    - Retrieves or computes all necessary meteorological and surface variables (temperature, humidity, pressure, radiation, NDVI, LAI, FVC, etc.).
+    - Calculates net radiation (Verma et al., 1989), soil heat flux (SEBAL; Bastiaanssen et al., 1998), and meteorological properties (Allen et al., 1998).
+    - Computes resistances and conductances for canopy and soil evaporation, including biome-specific and environmental constraints (Mu et al., 2011; Monteith, 1965).
+    - Partitions LE into wet canopy evaporation, transpiration, and soil evaporation, applying soil moisture and surface wetness constraints.
+
+    Parameters
+    ----------
+    NDVI : Raster or np.ndarray
+        Normalized Difference Vegetation Index.
+    ST_C : Raster or np.ndarray, optional
+        Surface temperature (Celsius).
+    emissivity : Raster or np.ndarray, optional
+        Surface emissivity.
+    albedo : Raster or np.ndarray, optional
+        Surface albedo.
+    Rn_Wm2 : Raster or np.ndarray, optional
+        Net radiation (W/m^2).
+    G_Wm2 : Raster or np.ndarray, optional
+        Soil heat flux (W/m^2).
+    Ta_C : Raster or np.ndarray, optional
+        Air temperature (Celsius).
+    Tmin_C : Raster or np.ndarray, optional
+        Minimum air temperature (Celsius).
+    RH : Raster or np.ndarray, optional
+        Relative humidity (fraction).
+    IGBP : Raster or np.ndarray, optional
+        Land cover classification (IGBP).
+    FVC : Raster or np.ndarray, optional
+        Fractional vegetation cover.
+    geometry : RasterGeometry, optional
+        Spatial geometry for raster data.
+    time_UTC : datetime, optional
+        Timestamp for meteorological data.
+    GEOS5FP_connection : GEOS5FP, optional
+        Meteorological data source.
+    resampling : str, optional
+        Resampling method for raster data.
+    Ps_Pa : Raster or np.ndarray, optional
+        Surface pressure (Pa).
+    elevation_km : Raster or np.ndarray, optional
+        Elevation (km).
+    delta_Pa : Raster or np.ndarray, optional
+        Slope of saturation vapor pressure curve (Pa/°C).
+    lambda_Jkg : Raster or np.ndarray, optional
+        Latent heat of vaporization (J/kg).
+    gamma_Jkg : Raster, np.ndarray, or float, optional
+        Psychrometric constant (J/kg).
+    gl_sh : Raster or np.ndarray, optional
+        Leaf conductance to sensible heat.
+    CL : Raster or np.ndarray, optional
+        Potential stomatal conductance.
+    Tmin_open, Tmin_closed : Raster or np.ndarray, optional
+        Open/closed minimum temperature by land cover.
+    VPD_open, VPD_closed : Raster or np.ndarray, optional
+        Open/closed vapor pressure deficit by land cover.
+    gl_e_wv : Raster or np.ndarray, optional
+        Leaf conductance to evaporated water vapor.
+    RBL_max, RBL_min : Raster or np.ndarray, optional
+        Maximum/minimum boundary layer resistance.
+    RH_threshold : float, optional
+        RH threshold for surface wetness.
+    min_fwet : float, optional
+        Minimum surface wetness.
+    IGBP_upsampling_resolution_meters : float, optional
+        Resolution for upsampling IGBP data.
+
+    Returns
+    -------
+    Dict[str, Raster]
+        Dictionary of output rasters, including:
+        - 'LEi_Wm2': Wet canopy evaporation (W/m^2)
+        - 'LEc_Wm2': Canopy transpiration (W/m^2)
+        - 'LEs': Soil evaporation (W/m^2)
+        - 'LE_Wm2': Total latent heat flux (W/m^2)
+        - Additional intermediate variables (e.g., resistances, conductances, meteorological properties)
+
+    References
+    ----------
+    Mu, Q., Zhao, M., & Running, S. W. (2011). Improvements to a MODIS global terrestrial evapotranspiration algorithm. Remote Sensing of Environment, 115(8), 1781-1800. https://doi.org/10.1016/j.rse.2011.02.019
+    MOD16 User Guide (2016): https://landweb.nascom.nasa.gov/QA_WWW/forPage/user_guide/MOD16UsersGuide2016.pdf
+    Allen, R. G., Pereira, L. S., Raes, D., & Smith, M. (1998). Crop evapotranspiration—Guidelines for computing crop water requirements—FAO Irrigation and drainage paper 56.
+    Monteith, J. L. (1965). Evaporation and environment. Symposia of the Society for Experimental Biology, 19, 205-234.
+    Carlson, T. N., & Ripley, D. A. (1997). On the relation between NDVI, fractional vegetation cover, and leaf area index. Remote Sensing of Environment, 62(3), 241-252.
+    Bastiaanssen, W. G. M., et al. (1998). A remote sensing surface energy balance algorithm for land (SEBAL). Journal of Hydrology, 212-213, 198-212.
+    Verma, S. B., Rosenberg, N. J., & Blad, B. L. (1989). Microclimate, evapotranspiration, and water status of maize under shelterbelt and non-shelterbelt conditions. Agricultural and Forest Meteorology, 46(1), 21-34.
+    """
 
     if geometry is None and isinstance(NDVI, Raster):
         geometry = NDVI.geometry
