@@ -82,39 +82,42 @@ DEFAULT_OUTPUT_VARIABLES = [
 ]
 
 def PMJPL(
-        NDVI: Union[Raster, np.ndarray],
-        ST_C: Union[Raster, np.ndarray] = None,
-        emissivity: Union[Raster, np.ndarray] = None,
-        albedo: Union[Raster, np.ndarray] = None,
-        Rn_Wm2: Union[Raster, np.ndarray] = None,
-        G_Wm2: Union[Raster, np.ndarray] = None,
-        Ta_C: Union[Raster, np.ndarray] = None,
-        Tmin_C: Union[Raster, np.ndarray] = None,
-        RH: Union[Raster, np.ndarray] = None,
-        IGBP: Union[Raster, np.ndarray] = None,
-        FVC: Union[Raster, np.ndarray] = None,
-        geometry: RasterGeometry = None,
-        time_UTC: datetime = None,
-        GEOS5FP_connection: GEOS5FP = None,
-        resampling: str = "nearest",
-        Ps_Pa: Union[Raster, np.ndarray] = None,
-        elevation_km: Union[Raster, np.ndarray] = None,
-        delta_Pa: Union[Raster, np.ndarray] = None,
-        lambda_Jkg: Union[Raster, np.ndarray] = None,
-        gamma_Jkg: Union[Raster, np.ndarray, float] = None,
-        gl_sh: Union[Raster, np.ndarray] = None,
-        CL: Union[Raster, np.ndarray] = None,
-        Tmin_open: Union[Raster, np.ndarray] = None,
-        Tmin_closed: Union[Raster, np.ndarray] = None,
-        VPD_open: Union[Raster, np.ndarray] = None,
-        VPD_closed: Union[Raster, np.ndarray] = None,
-        gl_e_wv: Union[Raster, np.ndarray] = None,
-        RBL_max: Union[Raster, np.ndarray] = None,
-        RBL_min: Union[Raster, np.ndarray] = None,
-        RH_threshold: float = RH_THRESHOLD,
-        min_fwet: float = MIN_FWET,
-        IGBP_upsampling_resolution_meters: float = IGBP_UPSAMPLING_RESOLUTION_METERS
-        ) -> Dict[str, Raster]:
+    NDVI: Union[Raster, np.ndarray],
+    ST_C: Union[Raster, np.ndarray] = None,
+    emissivity: Union[Raster, np.ndarray] = None,
+    albedo: Union[Raster, np.ndarray] = None,
+    Rn_Wm2: Union[Raster, np.ndarray] = None,
+    G_Wm2: Union[Raster, np.ndarray] = None,
+    Ta_C: Union[Raster, np.ndarray] = None,
+    Tmin_C: Union[Raster, np.ndarray] = None,
+    RH: Union[Raster, np.ndarray] = None,
+    IGBP: Union[Raster, np.ndarray] = None,
+    FVC: Union[Raster, np.ndarray] = None,
+    geometry: RasterGeometry = None,
+    time_UTC: datetime = None,
+    GEOS5FP_connection: GEOS5FP = None,
+    resampling: str = "nearest",
+    Ps_Pa: Union[Raster, np.ndarray] = None,
+    elevation_km: Union[Raster, np.ndarray] = None,
+    delta_Pa: Union[Raster, np.ndarray] = None,
+    lambda_Jkg: Union[Raster, np.ndarray] = None,
+    gamma_Jkg: Union[Raster, np.ndarray, float] = None,
+    gl_sh: Union[Raster, np.ndarray] = None,
+    CL: Union[Raster, np.ndarray] = None,
+    Tmin_open: Union[Raster, np.ndarray] = None,
+    Tmin_closed: Union[Raster, np.ndarray] = None,
+    VPD_open: Union[Raster, np.ndarray] = None,
+    VPD_closed: Union[Raster, np.ndarray] = None,
+    gl_e_wv: Union[Raster, np.ndarray] = None,
+    RBL_max: Union[Raster, np.ndarray] = None,
+    RBL_min: Union[Raster, np.ndarray] = None,
+    RH_threshold: float = RH_THRESHOLD,
+    min_fwet: float = MIN_FWET,
+    IGBP_upsampling_resolution_meters: float = IGBP_UPSAMPLING_RESOLUTION_METERS,
+    upscale_to_daily: bool = False,
+    Rn_daily_Wm2: Union[Raster, np.ndarray] = None,
+    day_of_year: np.ndarray = None
+    ) -> Dict[str, Raster]:
     """
     MOD16 Penman-Monteith Evapotranspiration Model (Version 1.5, Collection 6)
 
@@ -632,5 +635,47 @@ def PMJPL(
     LE_Wm2 = rt.clip(LEi_Wm2 + LEc_Wm2 + LEs_Wm2, 0.0, Rn_Wm2)
     check_distribution(LE_Wm2, "LE_Wm2")
     results['LE_Wm2'] = LE_Wm2
+
+    # --- Daily Upscaling Option ---
+    if upscale_to_daily and time_UTC is not None:
+        logger.info("started daily ET upscaling (PMJPL)")
+        # Calculate daily net radiation if not provided
+        if Rn_daily_Wm2 is None:
+            try:
+                from verma_net_radiation import daily_Rn_integration_verma
+                Rn_daily_Wm2 = daily_Rn_integration_verma(
+                    Rn_Wm2=Rn_Wm2,
+                    time_UTC=time_UTC,
+                    geometry=geometry
+                )
+            except ImportError:
+                logger.warning("daily_Rn_integration_verma not available; skipping daily net radiation integration")
+                Rn_daily_Wm2 = Rn_Wm2
+        results["Rn_daily_Wm2"] = Rn_daily_Wm2
+
+        # Calculate evaporative fraction (EF)
+        EF = rt.where((LE_Wm2 == 0) | ((Rn_Wm2 - G_Wm2) == 0), 0, LE_Wm2 / (Rn_Wm2 - G_Wm2))
+        results["EF"] = EF
+
+        # Calculate daylight latent heat flux
+        LE_daylight_Wm2 = EF * Rn_daily_Wm2
+        results["LE_daylight_Wm2"] = LE_daylight_Wm2
+
+        # Calculate daylight hours
+        try:
+            from sun_angles import calculate_daylight
+            daylight_hours = calculate_daylight(day_of_year=day_of_year, time_UTC=time_UTC, geometry=geometry)
+        except ImportError:
+            logger.warning("calculate_daylight not available; using 12 hours as default")
+            daylight_hours = 12.0
+        daylight_seconds = daylight_hours * 3600.0
+
+        # Latent heat of vaporization (J/kg) for 20C
+        LAMBDA_JKG_WATER_20C = 2450000.0
+
+        # Daily ET in kg
+        ET_daily_kg = rt.clip(LE_daylight_Wm2 * daylight_seconds / LAMBDA_JKG_WATER_20C, 0.0, None)
+        results["ET_daily_kg"] = ET_daily_kg
+        logger.info("completed daily ET upscaling (PMJPL)")
 
     return results
