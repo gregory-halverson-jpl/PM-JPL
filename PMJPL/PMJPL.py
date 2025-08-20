@@ -45,7 +45,7 @@ from .constants import *
 from .PMJPL_parameter_from_IGBP import PMJPL_parameter_from_IGBP
 from .calculate_gamma import calculate_gamma
 from .soil_moisture_constraint import calculate_fSM
-from .tmin_factor import calculate_tmin_factor
+from .Tmin_factor import Tmin_factor
 from .correctance_factor import calculate_correctance_factor
 from .VPD_factor import calculate_VPD_factor
 from .canopy_conductance import calculate_canopy_conductance
@@ -56,14 +56,14 @@ from .potential_soil_evaporation import calculate_potential_soil_evaporation
 from .interception import calculate_interception
 from .transpiration import calculate_transpiration
 from .leaf_conductance_to_sensible_heat import leaf_conductance_to_sensible_heat
-from .get_CL import get_CL
-from .get_tmin_open import get_tmin_open
-from .get_tmin_close import get_tmin_close
-from .get_VPD_open import get_VPD_open
-from .get_VPD_close import get_VPD_close
-from .get_gl_e_wv import get_gl_e_wv
-from .get_RBL_max import get_RBL_max
-from .get_RBL_min import get_RBL_min
+from .potential_stomatal_conductance import potential_stomatal_conductance
+from .open_minimum_temperature import open_minimum_temperature
+from .closed_minimum_temperature import closed_minimum_temperature
+from .open_vapor_pressure_deficit import open_vapor_pressure_deficit
+from .closed_vapor_pressure_deficit import closed_vapor_pressure_deficit
+from .leaf_conductance_to_evaporated_water import leaf_conductance_to_evaporated_water
+from .maximum_boundary_layer_resistance import maximum_boundary_layer_resistance
+from .minimum_boundary_layer_resistance import minimum_boundary_layer_resistance
 
 __author__ = 'Qiaozhen Mu, Maosheng Zhao, Steven W. Running, Gregory Halverson'
 
@@ -104,17 +104,116 @@ def PMJPL(
     gamma_Jkg: Union[Raster, np.ndarray, float] = None,
     gl_sh: Union[Raster, np.ndarray] = None,
     CL: Union[Raster, np.ndarray] = None,
-    tmin_open: Union[Raster, np.ndarray] = None,
-    tmin_close: Union[Raster, np.ndarray] = None,
+    Tmin_open: Union[Raster, np.ndarray] = None,
+    Tmin_closed: Union[Raster, np.ndarray] = None,
     VPD_open: Union[Raster, np.ndarray] = None,
-    VPD_close: Union[Raster, np.ndarray] = None,
+    VPD_closed: Union[Raster, np.ndarray] = None,
     gl_e_wv: Union[Raster, np.ndarray] = None,
     RBL_max: Union[Raster, np.ndarray] = None,
     RBL_min: Union[Raster, np.ndarray] = None,
     RH_threshold: float = RH_THRESHOLD,
     min_fwet: float = MIN_FWET,
-    IGBP_upsampling_resolution_meters: float = IGBP_UPSAMPLING_RESOLUTION_METERS
+    IGBP_upsampling_resolution_meters: float = IGBP_UPSAMPLING_RESOLUTION_METERS,
+    upscale_to_daily: bool = False,
+    Rn_daily_Wm2: Union[Raster, np.ndarray] = None,
+    day_of_year: np.ndarray = None
     ) -> Dict[str, Raster]:
+    """
+    MOD16 Penman-Monteith Evapotranspiration Model (Version 1.5, Collection 6)
+
+    Implements the MOD16 algorithm for partitioning daily latent heat flux (LE) into canopy transpiration, soil evaporation, and wet canopy evaporation, following Mu et al. (2011) and the MOD16 User Guide (2016).
+
+    Scientific Overview:
+    -------------------
+    This function estimates daily evapotranspiration (ET) and its components using satellite-derived vegetation indices, land cover, and meteorological data. It applies the Penman-Monteith equation, partitioning energy and resistances according to biophysical and meteorological constraints. The model is designed for gridded raster inputs but supports numpy arrays for flexibility.
+
+    Key Steps:
+    - Retrieves or computes all necessary meteorological and surface variables (temperature, humidity, pressure, radiation, NDVI, LAI, FVC, etc.).
+    - Calculates net radiation (Verma et al., 1989), soil heat flux (SEBAL; Bastiaanssen et al., 1998), and meteorological properties (Allen et al., 1998).
+    - Computes resistances and conductances for canopy and soil evaporation, including biome-specific and environmental constraints (Mu et al., 2011; Monteith, 1965).
+    - Partitions LE into wet canopy evaporation, transpiration, and soil evaporation, applying soil moisture and surface wetness constraints.
+
+    Parameters
+    ----------
+    NDVI : Raster or np.ndarray
+        Normalized Difference Vegetation Index.
+    ST_C : Raster or np.ndarray, optional
+        Surface temperature (Celsius).
+    emissivity : Raster or np.ndarray, optional
+        Surface emissivity.
+    albedo : Raster or np.ndarray, optional
+        Surface albedo.
+    Rn_Wm2 : Raster or np.ndarray, optional
+        Net radiation (W/m^2).
+    G_Wm2 : Raster or np.ndarray, optional
+        Soil heat flux (W/m^2).
+    Ta_C : Raster or np.ndarray, optional
+        Air temperature (Celsius).
+    Tmin_C : Raster or np.ndarray, optional
+        Minimum air temperature (Celsius).
+    RH : Raster or np.ndarray, optional
+        Relative humidity (fraction).
+    IGBP : Raster or np.ndarray, optional
+        Land cover classification (IGBP).
+    FVC : Raster or np.ndarray, optional
+        Fractional vegetation cover.
+    geometry : RasterGeometry, optional
+        Spatial geometry for raster data.
+    time_UTC : datetime, optional
+        Timestamp for meteorological data.
+    GEOS5FP_connection : GEOS5FP, optional
+        Meteorological data source.
+    resampling : str, optional
+        Resampling method for raster data.
+    Ps_Pa : Raster or np.ndarray, optional
+        Surface pressure (Pa).
+    elevation_km : Raster or np.ndarray, optional
+        Elevation (km).
+    delta_Pa : Raster or np.ndarray, optional
+        Slope of saturation vapor pressure curve (Pa/°C).
+    lambda_Jkg : Raster or np.ndarray, optional
+        Latent heat of vaporization (J/kg).
+    gamma_Jkg : Raster, np.ndarray, or float, optional
+        Psychrometric constant (J/kg).
+    gl_sh : Raster or np.ndarray, optional
+        Leaf conductance to sensible heat.
+    CL : Raster or np.ndarray, optional
+        Potential stomatal conductance.
+    Tmin_open, Tmin_closed : Raster or np.ndarray, optional
+        Open/closed minimum temperature by land cover.
+    VPD_open, VPD_closed : Raster or np.ndarray, optional
+        Open/closed vapor pressure deficit by land cover.
+    gl_e_wv : Raster or np.ndarray, optional
+        Leaf conductance to evaporated water vapor.
+    RBL_max, RBL_min : Raster or np.ndarray, optional
+        Maximum/minimum boundary layer resistance.
+    RH_threshold : float, optional
+        RH threshold for surface wetness.
+    min_fwet : float, optional
+        Minimum surface wetness.
+    IGBP_upsampling_resolution_meters : float, optional
+        Resolution for upsampling IGBP data.
+
+    Returns
+    -------
+    Dict[str, Raster]
+        Dictionary of output rasters, including:
+        - 'LEi_Wm2': Wet canopy evaporation (W/m^2)
+        - 'LEc_Wm2': Canopy transpiration (W/m^2)
+        - 'LEs': Soil evaporation (W/m^2)
+        - 'LE_Wm2': Total latent heat flux (W/m^2)
+        - Additional intermediate variables (e.g., resistances, conductances, meteorological properties)
+
+    References
+    ----------
+    Mu, Q., Zhao, M., & Running, S. W. (2011). Improvements to a MODIS global terrestrial evapotranspiration algorithm. Remote Sensing of Environment, 115(8), 1781-1800. https://doi.org/10.1016/j.rse.2011.02.019
+    MOD16 User Guide (2016): https://landweb.nascom.nasa.gov/QA_WWW/forPage/user_guide/MOD16UsersGuide2016.pdf
+    Allen, R. G., Pereira, L. S., Raes, D., & Smith, M. (1998). Crop evapotranspiration—Guidelines for computing crop water requirements—FAO Irrigation and drainage paper 56.
+    Monteith, J. L. (1965). Evaporation and environment. Symposia of the Society for Experimental Biology, 19, 205-234.
+    Carlson, T. N., & Ripley, D. A. (1997). On the relation between NDVI, fractional vegetation cover, and leaf area index. Remote Sensing of Environment, 62(3), 241-252.
+    Bastiaanssen, W. G. M., et al. (1998). A remote sensing surface energy balance algorithm for land (SEBAL). Journal of Hydrology, 212-213, 198-212.
+    Verma, S. B., Rosenberg, N. J., & Blad, B. L. (1989). Microclimate, evapotranspiration, and water status of maize under shelterbelt and non-shelterbelt conditions. Agricultural and Forest Meteorology, 46(1), 21-34.
+    """
     results = {}
 
     if geometry is None and isinstance(NDVI, Raster):
@@ -188,6 +287,9 @@ def PMJPL(
         )
 
         Rn_Wm2 = Rn_results["Rn_Wm2"]
+
+        if "Rn_daily_Wm2" in Rn_results:
+            Rn_daily_Wm2 = Rn_results["Rn_daily_Wm2"]
 
     if Rn_Wm2 is None:
         raise ValueError("net radiation (Rn) not given")
@@ -316,7 +418,7 @@ def PMJPL(
 
     # calculate leaf conductance to evaporated water vapor (gl_e_wv)
     if gl_e_wv is None:
-        gl_e_wv = get_gl_e_wv(IGBP, geometry, IGBP_upsampling_resolution_meters)
+        gl_e_wv = leaf_conductance_to_evaporated_water(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
     check_distribution(gl_e_wv, "gl_e_wv")
     results['gl_e_wv'] = gl_e_wv
@@ -353,50 +455,48 @@ def PMJPL(
 
     # biome-specific mean potential stomatal conductance per unit leaf area
     if CL is None:
-        CL = get_CL(IGBP, geometry, IGBP_upsampling_resolution_meters)
+        CL = potential_stomatal_conductance(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
     check_distribution(CL, "CL")
     results['CL'] = CL
 
     # open minimum temperature by land-cover
-    if tmin_open is None:
-        tmin_open = get_tmin_open(IGBP, geometry, IGBP_upsampling_resolution_meters)
+    if Tmin_open is None:
+        Tmin_open = open_minimum_temperature(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
-    check_distribution(tmin_open, "tmin_open")
-    results['tmin_open'] = tmin_open
+    check_distribution(Tmin_open, "Tmin_open")
+    results['Tmin_open'] = Tmin_open
 
     # closed minimum temperature by land-cover
-    if tmin_close is None:
-        tmin_close = get_tmin_close(IGBP, geometry, IGBP_upsampling_resolution_meters)
+    if Tmin_closed is None:
+        Tmin_closed = closed_minimum_temperature(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
-    check_distribution(tmin_close, "tmin_close")
-    results['tmin_close'] = tmin_close
+    check_distribution(Tmin_closed, "Tmin_closed")
+    results['Tmin_closed'] = Tmin_closed
 
     check_distribution(Tmin_C, "Tmin_C")
-    check_distribution(tmin_open, "tmin_open")
-    check_distribution(tmin_close, "tmin_close")
 
     # minimum temperature factor for stomatal conductance
-    mTmin = calculate_tmin_factor(Tmin_C, tmin_open, tmin_close)
+    mTmin = Tmin_factor(Tmin_C, Tmin_open, Tmin_closed)
     check_distribution(mTmin, "mTmin")
     results['mTmin'] = mTmin
 
     # open vapor pressure deficit by land-cover
     if VPD_open is None:
-        VPD_open = get_VPD_open(IGBP, geometry, IGBP_upsampling_resolution_meters)
+        VPD_open = open_vapor_pressure_deficit(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
     check_distribution(VPD_open, "VPD_open")
-    results['vpd_open'] = VPD_open
+    results['VPD_open'] = VPD_open
 
     # closed vapor pressure deficit by land-cover
-    if VPD_close is None:
-        VPD_close = get_VPD_close(IGBP, geometry, IGBP_upsampling_resolution_meters)
+    if VPD_closed is None:
+        VPD_closed = closed_vapor_pressure_deficit(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
-    check_distribution(VPD_close, "VPD_close")
-    results['vpd_close'] = VPD_close
+    check_distribution(VPD_closed, "VPD_close")
+    results['VPD_closed'] = VPD_closed
 
     # vapor pressure deficit factor for stomatal conductance
-    mVPD = calculate_VPD_factor(VPD_open, VPD_close, VPD_Pa)
+    mVPD = calculate_VPD_factor(VPD_open, VPD_closed, VPD_Pa)
     check_distribution(mVPD, "mVPD")
     results['mVPD'] = mVPD
 
@@ -454,19 +554,19 @@ def PMJPL(
     # soil evaporation
     # aerodynamic resistant constraints from land-cover
     if RBL_max is None:
-        RBL_max = get_RBL_max(IGBP, geometry, IGBP_upsampling_resolution_meters)
+        RBL_max = maximum_boundary_layer_resistance(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
     check_distribution(RBL_max, "RBL_max")
-    results['rbl_max'] = RBL_max
+    results['RBL_max'] = RBL_max
 
     if RBL_min is None:
-        RBL_min = get_RBL_min(IGBP, geometry, IGBP_upsampling_resolution_meters)
+        RBL_min = minimum_boundary_layer_resistance(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
     check_distribution(RBL_min, "RBL_min")
-    results['rbl_min'] = RBL_min
+    results['RBL_min'] = RBL_min
 
     # canopy aerodynamic resistance in seconds per meter
-    rtotc = calculate_canopy_aerodynamic_resistance(VPD_Pa, VPD_open, VPD_close, RBL_max, RBL_min)
+    rtotc = calculate_canopy_aerodynamic_resistance(VPD_Pa, VPD_open, VPD_closed, RBL_max, RBL_min)
     check_distribution(rtotc, "rtotc")
     results['rtotc'] = rtotc
 
@@ -538,5 +638,47 @@ def PMJPL(
     LE_Wm2 = rt.clip(LEi_Wm2 + LEc_Wm2 + LEs_Wm2, 0.0, Rn_Wm2)
     check_distribution(LE_Wm2, "LE_Wm2")
     results['LE_Wm2'] = LE_Wm2
+
+    # --- Daily Upscaling Option ---
+    if upscale_to_daily and time_UTC is not None:
+        logger.info("started daily ET upscaling (PMJPL)")
+        # Calculate daily net radiation if not provided
+        if Rn_daily_Wm2 is None:
+            try:
+                from verma_net_radiation import daily_Rn_integration_verma
+                Rn_daily_Wm2 = daily_Rn_integration_verma(
+                    Rn_Wm2=Rn_Wm2,
+                    time_UTC=time_UTC,
+                    geometry=geometry
+                )
+            except ImportError:
+                logger.warning("daily_Rn_integration_verma not available; skipping daily net radiation integration")
+                Rn_daily_Wm2 = Rn_Wm2
+        results["Rn_daily_Wm2"] = Rn_daily_Wm2
+
+        # Calculate evaporative fraction (EF)
+        EF = rt.where((LE_Wm2 == 0) | ((Rn_Wm2 - G_Wm2) == 0), 0, LE_Wm2 / (Rn_Wm2 - G_Wm2))
+        results["EF"] = EF
+
+        # Calculate daylight latent heat flux
+        LE_daylight_Wm2 = EF * Rn_daily_Wm2
+        results["LE_daylight_Wm2"] = LE_daylight_Wm2
+
+        # Calculate daylight hours
+        try:
+            from sun_angles import calculate_daylight
+            daylight_hours = calculate_daylight(day_of_year=day_of_year, time_UTC=time_UTC, geometry=geometry)
+        except ImportError:
+            logger.warning("calculate_daylight not available; using 12 hours as default")
+            daylight_hours = 12.0
+        daylight_seconds = daylight_hours * 3600.0
+
+        # Latent heat of vaporization (J/kg) for 20C
+        LAMBDA_JKG_WATER_20C = 2450000.0
+
+        # Daily ET in kg
+        ET_daily_kg = rt.clip(LE_daylight_Wm2 * daylight_seconds / LAMBDA_JKG_WATER_20C, 0.0, None)
+        results["ET_daily_kg"] = ET_daily_kg
+        logger.info("completed daily ET upscaling (PMJPL)")
 
     return results

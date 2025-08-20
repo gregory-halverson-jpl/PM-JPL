@@ -1,5 +1,7 @@
 from priestley_taylor import GAMMA_PA
 
+UPSCALE_TO_DAILY = False
+
 IGBP_PARAMETER_RESAMPLING = "cubic"
 IGBP_UPSAMPLING_RESOLUTION_METERS = 5000
 
