@@ -211,6 +211,7 @@ def PMJPL(
     Bastiaanssen, W. G. M., et al. (1998). A remote sensing surface energy balance algorithm for land (SEBAL). Journal of Hydrology, 212-213, 198-212.
     Verma, S. B., Rosenberg, N. J., & Blad, B. L. (1989). Microclimate, evapotranspiration, and water status of maize under shelterbelt and non-shelterbelt conditions. Agricultural and Forest Meteorology, 46(1), 21-34.
     """
+    results = {}
 
     if geometry is None and isinstance(NDVI, Raster):
         geometry = NDVI.geometry
