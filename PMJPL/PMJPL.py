@@ -45,7 +45,7 @@ from .constants import *
 from .PMJPL_parameter_from_IGBP import PMJPL_parameter_from_IGBP
 from .calculate_gamma import calculate_gamma
 from .soil_moisture_constraint import calculate_fSM
-from .tmin_factor import calculate_tmin_factor
+from .tmin_factor import Tmin_factor
 from .correctance_factor import calculate_correctance_factor
 from .VPD_factor import calculate_VPD_factor
 from .canopy_conductance import calculate_canopy_conductance
@@ -56,14 +56,14 @@ from .potential_soil_evaporation import calculate_potential_soil_evaporation
 from .interception import calculate_interception
 from .transpiration import calculate_transpiration
 from .leaf_conductance_to_sensible_heat import leaf_conductance_to_sensible_heat
-from .get_CL import get_CL
-from .get_tmin_open import get_tmin_open
-from .get_tmin_close import get_tmin_close
-from .get_VPD_open import get_VPD_open
-from .get_VPD_close import get_VPD_close
-from .get_gl_e_wv import get_gl_e_wv
-from .get_RBL_max import get_RBL_max
-from .get_RBL_min import get_RBL_min
+from .potential_stomatal_conductance import potential_stomatal_conductance
+from .open_minimum_temperature import open_minimum_temperature
+from .closed_minimum_temperature import closed_minimum_temperature
+from .open_vapor_pressure_deficit import open_vapor_pressure_deficit
+from .closed_vapor_pressure_deficit import closed_vapor_pressure_deficit
+from .leaf_conductance_to_evaporated_water import leaf_conductance_to_evaporated_water
+from .maximum_boundary_layer_resistance import maximum_boundary_layer_resistance
+from .minimum_boundary_layer_resistance import minimum_boundary_layer_resistance
 
 __author__ = 'Qiaozhen Mu, Maosheng Zhao, Steven W. Running, Gregory Halverson'
 
@@ -104,10 +104,10 @@ def PMJPL(
     gamma_Jkg: Union[Raster, np.ndarray, float] = None,
     gl_sh: Union[Raster, np.ndarray] = None,
     CL: Union[Raster, np.ndarray] = None,
-    tmin_open: Union[Raster, np.ndarray] = None,
-    tmin_close: Union[Raster, np.ndarray] = None,
+    Tmin_open: Union[Raster, np.ndarray] = None,
+    Tmin_closed: Union[Raster, np.ndarray] = None,
     VPD_open: Union[Raster, np.ndarray] = None,
-    VPD_close: Union[Raster, np.ndarray] = None,
+    VPD_closed: Union[Raster, np.ndarray] = None,
     gl_e_wv: Union[Raster, np.ndarray] = None,
     RBL_max: Union[Raster, np.ndarray] = None,
     RBL_min: Union[Raster, np.ndarray] = None,
@@ -316,7 +316,7 @@ def PMJPL(
 
     # calculate leaf conductance to evaporated water vapor (gl_e_wv)
     if gl_e_wv is None:
-        gl_e_wv = get_gl_e_wv(IGBP, geometry, IGBP_upsampling_resolution_meters)
+        gl_e_wv = leaf_conductance_to_evaporated_water(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
     check_distribution(gl_e_wv, "gl_e_wv")
     results['gl_e_wv'] = gl_e_wv
@@ -353,50 +353,48 @@ def PMJPL(
 
     # biome-specific mean potential stomatal conductance per unit leaf area
     if CL is None:
-        CL = get_CL(IGBP, geometry, IGBP_upsampling_resolution_meters)
+        CL = potential_stomatal_conductance(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
     check_distribution(CL, "CL")
     results['CL'] = CL
 
     # open minimum temperature by land-cover
-    if tmin_open is None:
-        tmin_open = get_tmin_open(IGBP, geometry, IGBP_upsampling_resolution_meters)
+    if Tmin_open is None:
+        Tmin_open = open_minimum_temperature(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
-    check_distribution(tmin_open, "tmin_open")
-    results['tmin_open'] = tmin_open
+    check_distribution(Tmin_open, "Tmin_open")
+    results['Tmin_open'] = Tmin_open
 
     # closed minimum temperature by land-cover
-    if tmin_close is None:
-        tmin_close = get_tmin_close(IGBP, geometry, IGBP_upsampling_resolution_meters)
+    if Tmin_closed is None:
+        Tmin_closed = closed_minimum_temperature(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
-    check_distribution(tmin_close, "tmin_close")
-    results['tmin_close'] = tmin_close
+    check_distribution(Tmin_closed, "Tmin_closed")
+    results['Tmin_closed'] = Tmin_closed
 
     check_distribution(Tmin_C, "Tmin_C")
-    check_distribution(tmin_open, "tmin_open")
-    check_distribution(tmin_close, "tmin_close")
 
     # minimum temperature factor for stomatal conductance
-    mTmin = calculate_tmin_factor(Tmin_C, tmin_open, tmin_close)
+    mTmin = Tmin_factor(Tmin_C, Tmin_open, Tmin_closed)
     check_distribution(mTmin, "mTmin")
     results['mTmin'] = mTmin
 
     # open vapor pressure deficit by land-cover
     if VPD_open is None:
-        VPD_open = get_VPD_open(IGBP, geometry, IGBP_upsampling_resolution_meters)
+        VPD_open = open_vapor_pressure_deficit(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
     check_distribution(VPD_open, "VPD_open")
-    results['vpd_open'] = VPD_open
+    results['VPD_open'] = VPD_open
 
     # closed vapor pressure deficit by land-cover
-    if VPD_close is None:
-        VPD_close = get_VPD_close(IGBP, geometry, IGBP_upsampling_resolution_meters)
+    if VPD_closed is None:
+        VPD_closed = closed_vapor_pressure_deficit(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
-    check_distribution(VPD_close, "VPD_close")
-    results['vpd_close'] = VPD_close
+    check_distribution(VPD_closed, "VPD_close")
+    results['VPD_closed'] = VPD_closed
 
     # vapor pressure deficit factor for stomatal conductance
-    mVPD = calculate_VPD_factor(VPD_open, VPD_close, VPD_Pa)
+    mVPD = calculate_VPD_factor(VPD_open, VPD_closed, VPD_Pa)
     check_distribution(mVPD, "mVPD")
     results['mVPD'] = mVPD
 
@@ -454,19 +452,19 @@ def PMJPL(
     # soil evaporation
     # aerodynamic resistant constraints from land-cover
     if RBL_max is None:
-        RBL_max = get_RBL_max(IGBP, geometry, IGBP_upsampling_resolution_meters)
+        RBL_max = maximum_boundary_layer_resistance(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
     check_distribution(RBL_max, "RBL_max")
-    results['rbl_max'] = RBL_max
+    results['RBL_max'] = RBL_max
 
     if RBL_min is None:
-        RBL_min = get_RBL_min(IGBP, geometry, IGBP_upsampling_resolution_meters)
+        RBL_min = minimum_boundary_layer_resistance(IGBP, geometry, IGBP_upsampling_resolution_meters)
 
     check_distribution(RBL_min, "RBL_min")
-    results['rbl_min'] = RBL_min
+    results['RBL_min'] = RBL_min
 
     # canopy aerodynamic resistance in seconds per meter
-    rtotc = calculate_canopy_aerodynamic_resistance(VPD_Pa, VPD_open, VPD_close, RBL_max, RBL_min)
+    rtotc = calculate_canopy_aerodynamic_resistance(VPD_Pa, VPD_open, VPD_closed, RBL_max, RBL_min)
     check_distribution(rtotc, "rtotc")
     results['rtotc'] = rtotc
 

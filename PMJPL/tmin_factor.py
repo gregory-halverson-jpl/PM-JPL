@@ -3,7 +3,7 @@ import numpy as np
 import rasters as rt
 from rasters import Raster
 
-def calculate_tmin_factor(
+def Tmin_factor(
         Tmin: Union[Raster, np.ndarray],
         tmin_open: Union[Raster, np.ndarray],
         tmin_close: Union[Raster, np.ndarray]) -> Union[Raster, np.ndarray]:
