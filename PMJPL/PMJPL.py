@@ -288,6 +288,9 @@ def PMJPL(
 
         Rn_Wm2 = Rn_results["Rn_Wm2"]
 
+        if "Rn_daily_Wm2" in Rn_results:
+            Rn_daily_Wm2 = Rn_results["Rn_daily_Wm2"]
+
     if Rn_Wm2 is None:
         raise ValueError("net radiation (Rn) not given")
 
