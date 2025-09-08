@@ -88,6 +88,7 @@ def PMJPL(
     albedo: Union[Raster, np.ndarray] = None,
     Rn_Wm2: Union[Raster, np.ndarray] = None,
     G_Wm2: Union[Raster, np.ndarray] = None,
+    SWin_Wm2: Union[Raster, np.ndarray] = None,
     Ta_C: Union[Raster, np.ndarray] = None,
     Tmin_C: Union[Raster, np.ndarray] = None,
     RH: Union[Raster, np.ndarray] = None,
@@ -116,7 +117,8 @@ def PMJPL(
     IGBP_upsampling_resolution_meters: float = IGBP_UPSAMPLING_RESOLUTION_METERS,
     upscale_to_daily: bool = False,
     Rn_daily_Wm2: Union[Raster, np.ndarray] = None,
-    day_of_year: np.ndarray = None
+    day_of_year: np.ndarray = None,
+    regenerate_net_radiation: bool = False
     ) -> Dict[str, Raster]:
     """
     MOD16 Penman-Monteith Evapotranspiration Model (Version 1.5, Collection 6)
@@ -147,6 +149,8 @@ def PMJPL(
         Net radiation (W/m^2).
     G_Wm2 : Raster or np.ndarray, optional
         Soil heat flux (W/m^2).
+    SWin_Wm2 : Raster or np.ndarray, optional
+        Incoming shortwave radiation (W/m^2).
     Ta_C : Raster or np.ndarray, optional
         Air temperature (Celsius).
     Tmin_C : Raster or np.ndarray, optional
@@ -193,6 +197,10 @@ def PMJPL(
         Minimum surface wetness.
     IGBP_upsampling_resolution_meters : float, optional
         Resolution for upsampling IGBP data.
+    upscale_to_daily : bool, optional
+        Whether to upscale instantaneous values to daily estimates.
+    regenerate_net_radiation : bool, optional
+        Whether to regenerate net radiation from surface components even if Rn_Wm2 is provided.
 
     Returns
     -------
@@ -269,21 +277,30 @@ def PMJPL(
 
         IGBP = load_MCD12C1_IGBP(geometry=IGBP_geometry)
 
-    if Rn_Wm2 is None and albedo is not None and ST_C is not None and emissivity is not None:
-        if SWin is None and geometry is not None and time_UTC is not None:
-            SWin = GEOS5FP_connection.SWin(
+    if regenerate_net_radiation or (Rn_Wm2 is None and albedo is not None and ST_C is not None and emissivity is not None):
+        if SWin_Wm2 is None and geometry is not None and time_UTC is not None:
+            logger.info("retrieving shortwave radiation (SWin_Wm2) from GEOS-5 FP")
+            SWin_Wm2 = GEOS5FP_connection.SWin(
                 time_UTC=time_UTC,
                 geometry=geometry,
                 resampling=resampling
             )
+        elif SWin_Wm2 is not None:
+            logger.info("using given shortwave radiation (SWin_Wm2)")
+
+        if upscale_to_daily:
+            logger.info("running Verma net radiation with daily upscaling")
+        else:
+            logger.info("running instantaneous Verma net radiation")
 
         Rn_results = verma_net_radiation(
-            SWin=SWin,
+            SWin=SWin_Wm2,
             albedo=albedo,
             ST_C=ST_C,
             emissivity=emissivity,
             Ta_C=Ta_C,
-            RH=RH
+            RH=RH,
+            upscale_to_daily=upscale_to_daily,
         )
 
         Rn_Wm2 = Rn_results["Rn_Wm2"]
@@ -291,8 +308,21 @@ def PMJPL(
         if "Rn_daily_Wm2" in Rn_results:
             Rn_daily_Wm2 = Rn_results["Rn_daily_Wm2"]
 
+    elif Rn_Wm2 is not None:
+        logger.info("using given net radiation (Rn_Wm2) for PM-JPL processing")
+
     if Rn_Wm2 is None:
-        raise ValueError("net radiation (Rn) not given")
+        missing_vars = []
+        if albedo is None:
+            missing_vars.append('albedo')
+        if ST_C is None:
+            missing_vars.append('ST_C')
+        if emissivity is None:
+            missing_vars.append('emissivity')
+        if missing_vars:
+            raise ValueError(f"net radiation (Rn_Wm2) not given, and missing required variables to calculate: {', '.join(missing_vars)}")
+        else:
+            raise ValueError("net radiation (Rn_Wm2) not given and cannot be calculated")
 
     if G_Wm2 is None and Rn_Wm2 is not None and ST_C is not None and NDVI is not None and albedo is not None:
         G_Wm2 = calculate_SEBAL_soil_heat_flux(

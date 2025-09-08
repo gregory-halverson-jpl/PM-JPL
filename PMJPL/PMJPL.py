@@ -65,5 +65,7 @@ from .leaf_conductance_to_evaporated_water import leaf_conductance_to_evaporated
 from .maximum_boundary_layer_resistance import maximum_boundary_layer_resistance
 from .minimum_boundary_layer_resistance import minimum_boundary_layer_resistance
 from .model import PMJPL
+from .process_PMJPL_table import process_PMJPL_table
+from .ECOv002_static_tower_PMJPL_inputs import load_ECOv002_static_tower_PMJPL_inputs
 
 __author__ = 'Qiaozhen Mu, Maosheng Zhao, Steven W. Running, Gregory Halverson'
