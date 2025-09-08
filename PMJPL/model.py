@@ -28,7 +28,7 @@ from carlson_leaf_area_index import carlson_leaf_area_index
 from carlson_fractional_vegetation_cover import carlson_fractional_vegetation_cover
 from carlson_leaf_area_index import carlson_leaf_area_index
 
-from daily_evapotranspiration_upscaling import lambda_Jkg_from_Ta_C
+from daylight_evapotranspiration import lambda_Jkg_from_Ta_C
 
 from meteorology_conversion import SVP_Pa_from_Ta_C
 from meteorology_conversion import calculate_air_density
@@ -77,8 +77,8 @@ DEFAULT_OUTPUT_VARIABLES = [
     'LEc',
     'LEs',
     'LE',
-    'LE_daily',
-    'ET_daily_kg'
+    'LE_daylight',
+    'ET_daylight_kg'
 ]
 
 def PMJPL(
@@ -115,19 +115,19 @@ def PMJPL(
     RH_threshold: float = RH_THRESHOLD,
     min_fwet: float = MIN_FWET,
     IGBP_upsampling_resolution_meters: float = IGBP_UPSAMPLING_RESOLUTION_METERS,
-    upscale_to_daily: bool = False,
-    Rn_daily_Wm2: Union[Raster, np.ndarray] = None,
+    upscale_to_daylight: bool = False,
+    Rn_daylight_Wm2: Union[Raster, np.ndarray] = None,
     day_of_year: np.ndarray = None,
     regenerate_net_radiation: bool = False
     ) -> Dict[str, Raster]:
     """
     MOD16 Penman-Monteith Evapotranspiration Model (Version 1.5, Collection 6)
 
-    Implements the MOD16 algorithm for partitioning daily latent heat flux (LE) into canopy transpiration, soil evaporation, and wet canopy evaporation, following Mu et al. (2011) and the MOD16 User Guide (2016).
+    Implements the MOD16 algorithm for partitioning daylight latent heat flux (LE) into canopy transpiration, soil evaporation, and wet canopy evaporation, following Mu et al. (2011) and the MOD16 User Guide (2016).
 
     Scientific Overview:
     -------------------
-    This function estimates daily evapotranspiration (ET) and its components using satellite-derived vegetation indices, land cover, and meteorological data. It applies the Penman-Monteith equation, partitioning energy and resistances according to biophysical and meteorological constraints. The model is designed for gridded raster inputs but supports numpy arrays for flexibility.
+    This function estimates daylight evapotranspiration (ET) and its components using satellite-derived vegetation indices, land cover, and meteorological data. It applies the Penman-Monteith equation, partitioning energy and resistances according to biophysical and meteorological constraints. The model is designed for gridded raster inputs but supports numpy arrays for flexibility.
 
     Key Steps:
     - Retrieves or computes all necessary meteorological and surface variables (temperature, humidity, pressure, radiation, NDVI, LAI, FVC, etc.).
@@ -197,8 +197,8 @@ def PMJPL(
         Minimum surface wetness.
     IGBP_upsampling_resolution_meters : float, optional
         Resolution for upsampling IGBP data.
-    upscale_to_daily : bool, optional
-        Whether to upscale instantaneous values to daily estimates.
+    upscale_to_daylight : bool, optional
+        Whether to upscale instantaneous values to daylight estimates.
     regenerate_net_radiation : bool, optional
         Whether to regenerate net radiation from surface components even if Rn_Wm2 is provided.
 
@@ -288,25 +288,25 @@ def PMJPL(
         elif SWin_Wm2 is not None:
             logger.info("using given shortwave radiation (SWin_Wm2)")
 
-        if upscale_to_daily:
-            logger.info("running Verma net radiation with daily upscaling")
+        if upscale_to_daylight:
+            logger.info("running Verma net radiation with daylight upscaling")
         else:
             logger.info("running instantaneous Verma net radiation")
 
         Rn_results = verma_net_radiation(
-            SWin=SWin_Wm2,
+            SWin_Wm2=SWin_Wm2,
             albedo=albedo,
             ST_C=ST_C,
             emissivity=emissivity,
             Ta_C=Ta_C,
             RH=RH,
-            upscale_to_daily=upscale_to_daily,
+            upscale_to_daylight=upscale_to_daylight,
         )
 
         Rn_Wm2 = Rn_results["Rn_Wm2"]
 
-        if "Rn_daily_Wm2" in Rn_results:
-            Rn_daily_Wm2 = Rn_results["Rn_daily_Wm2"]
+        if "Rn_daylight_Wm2" in Rn_results:
+            Rn_daylight_Wm2 = Rn_results["Rn_daylight_Wm2"]
 
     elif Rn_Wm2 is not None:
         logger.info("using given net radiation (Rn_Wm2) for PM-JPL processing")
@@ -669,29 +669,29 @@ def PMJPL(
     check_distribution(LE_Wm2, "LE_Wm2")
     results['LE_Wm2'] = LE_Wm2
 
-    # --- Daily Upscaling Option ---
-    if upscale_to_daily and time_UTC is not None:
-        logger.info("started daily ET upscaling (PMJPL)")
-        # Calculate daily net radiation if not provided
-        if Rn_daily_Wm2 is None:
+    # --- daylight Upscaling Option ---
+    if upscale_to_daylight and time_UTC is not None:
+        logger.info("started daylight ET upscaling (PMJPL)")
+        # Calculate daylight net radiation if not provided
+        if Rn_daylight_Wm2 is None:
             try:
                 from verma_net_radiation import daylight_Rn_integration_verma
-                Rn_daily_Wm2 = daylight_Rn_integration_verma(
+                Rn_daylight_Wm2 = daylight_Rn_integration_verma(
                     Rn_Wm2=Rn_Wm2,
                     time_UTC=time_UTC,
                     geometry=geometry
                 )
             except ImportError:
-                logger.warning("daylight_Rn_integration_verma not available; skipping daily net radiation integration")
-                Rn_daily_Wm2 = Rn_Wm2
-        results["Rn_daily_Wm2"] = Rn_daily_Wm2
+                logger.warning("daylight_Rn_integration_verma not available; skipping daylight net radiation integration")
+                Rn_daylight_Wm2 = Rn_Wm2
+        results["Rn_daylight_Wm2"] = Rn_daylight_Wm2
 
         # Calculate evaporative fraction (EF)
         EF = rt.where((LE_Wm2 == 0) | ((Rn_Wm2 - G_Wm2) == 0), 0, LE_Wm2 / (Rn_Wm2 - G_Wm2))
         results["EF"] = EF
 
         # Calculate daylight latent heat flux
-        LE_daylight_Wm2 = EF * Rn_daily_Wm2
+        LE_daylight_Wm2 = EF * Rn_daylight_Wm2
         results["LE_daylight_Wm2"] = LE_daylight_Wm2
 
         # Calculate daylight hours
@@ -706,9 +706,9 @@ def PMJPL(
         # Latent heat of vaporization (J/kg) for 20C
         LAMBDA_JKG_WATER_20C = 2450000.0
 
-        # Daily ET in kg
-        ET_daily_kg = rt.clip(LE_daylight_Wm2 * daylight_seconds / LAMBDA_JKG_WATER_20C, 0.0, None)
-        results["ET_daily_kg"] = ET_daily_kg
-        logger.info("completed daily ET upscaling (PMJPL)")
+        # daylight ET in kg
+        ET_daylight_kg = rt.clip(LE_daylight_Wm2 * daylight_seconds / LAMBDA_JKG_WATER_20C, 0.0, None)
+        results["ET_daylight_kg"] = ET_daylight_kg
+        logger.info("completed daylight ET upscaling (PMJPL)")
 
     return results

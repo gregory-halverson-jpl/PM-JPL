@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 def process_PMJPL_table(
         input_df: DataFrame,
-        upscale_to_daily: bool = False,
+        upscale_to_daylight: bool = False,
         regenerate_net_radiation: bool = False
         ) -> DataFrame:
     """
@@ -82,6 +82,7 @@ def process_PMJPL_table(
 
     # Extract and typecast surface temperature (ST_C) and NDVI
     ST_C = np.array(input_df.ST_C).astype(np.float64)
+    emissivity = np.array(input_df.emissivity).astype(np.float64)
     NDVI = np.array(input_df.NDVI).astype(np.float64)
 
     # Mask NDVI values below threshold (0.06) as NaN
@@ -100,10 +101,31 @@ def process_PMJPL_table(
 
     # Extract and typecast relative humidity and net radiation
     RH = np.array(input_df.RH).astype(np.float64)
+
+    if "SWin_Wm2" in input_df:
+        SWin_Wm2 = np.array(input_df.SWin_Wm2).astype(np.float64)
+    else:
+        SWin_Wm2 = None
+
     if "Rn_Wm2" in input_df:
         Rn_Wm2 = np.array(input_df.Rn_Wm2).astype(np.float64)
     else:
         Rn_Wm2 = None
+
+    if "Rn_daily_Wm2" in input_df:
+        Rn_daylight_Wm2 = np.array(input_df.Rn_daily_Wm2).astype(np.float64)
+    else:
+        Rn_daylight_Wm2 = None
+
+    if "Tmin_C" in input_df:
+        Tmin_C = np.array(input_df.Tmin_C).astype(np.float64)
+    else:
+        Tmin_C = None
+
+    if "elevation_km" in input_df:
+        elevation_km = np.array(input_df.elevation_km).astype(np.float64)
+    else:
+        elevation_km = None
 
     # --- Handle geometry and time columns ---
     import pandas as pd
@@ -158,11 +180,16 @@ def process_PMJPL_table(
         NDVI=NDVI,
         Ta_C=Ta_C,
         ST_C=ST_C,
+        emissivity=emissivity,
         RH=RH,
         Rn_Wm2=Rn_Wm2,
+        Rn_daylight_Wm2=Rn_daylight_Wm2,
+        SWin_Wm2=SWin_Wm2,
         albedo=albedo,
+        Tmin_C=Tmin_C,
+        elevation_km=elevation_km,
         time_UTC=time_UTC,
-        upscale_to_daily=upscale_to_daily,
+        upscale_to_daylight=upscale_to_daylight,
         regenerate_net_radiation=regenerate_net_radiation
     )
 
