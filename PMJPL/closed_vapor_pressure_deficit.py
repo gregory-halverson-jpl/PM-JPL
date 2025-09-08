@@ -4,7 +4,7 @@ from typing import Union
 
 def closed_vapor_pressure_deficit(IGBP: Union[Raster, int], geometry=None, IGBP_upsampling_resolution_meters=None):
     return PMJPL_parameter_from_IGBP(
-        variable="vpd_close",
+        variable="VPD_closed",
         IGBP=IGBP,
         geometry=geometry,
         IGBP_upsampling_resolution_meters=IGBP_upsampling_resolution_meters
