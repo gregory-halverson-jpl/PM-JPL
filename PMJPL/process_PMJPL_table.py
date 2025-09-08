@@ -7,6 +7,7 @@ It prepares the required variables from a pandas DataFrame, handles missing or a
 import logging
 
 import numpy as np
+import pandas as pd
 import rasters as rt
 from rasters import MultiPoint, WGS84
 
@@ -40,6 +41,7 @@ def process_PMJPL_table(
         - 'Ta_C' or 'Ta': Air temperature in Celsius (required)
         - 'RH': Relative humidity (0-1, required)
         - 'Rn_Wm2': Net radiation (W/m^2, required)
+        - 'time_UTC': Time in UTC (required)
         - 'geometry': Geometry object (optional, will be constructed from 'lat' and 'lon' if missing)
         - 'lat', 'lon': Latitude and longitude (optional, used to construct geometry if needed)
 
@@ -54,7 +56,7 @@ def process_PMJPL_table(
             - 'PET': Potential evapotranspiration
 
     Example:
-        Suppose you have a CSV file with columns: NDVI, ST_C, albedo, Ta_C, RH, Rn, lat, lon
+        Suppose you have a CSV file with columns: NDVI, ST_C, albedo, Ta_C, RH, Rn, time_UTC, lat, lon
 
         ```python
         import pandas as pd
@@ -146,7 +148,11 @@ def process_PMJPL_table(
 
     logger.info("completed extracting geometry from PM-JPL input table")
 
-    # --- Pass geometry and variables to the model ---
+    logger.info("started extracting time from PM-JPL input table")
+    time_UTC = pd.to_datetime(input_df.time_UTC).tolist()
+    logger.info("completed extracting time from PM-JPL input table")
+
+    # --- Pass time and geometry to the model ---
     results = PMJPL(
         geometry=geometry,
         NDVI=NDVI,
@@ -155,6 +161,7 @@ def process_PMJPL_table(
         RH=RH,
         Rn_Wm2=Rn_Wm2,
         albedo=albedo,
+        time_UTC=time_UTC,
         upscale_to_daily=upscale_to_daily,
         regenerate_net_radiation=regenerate_net_radiation
     )
