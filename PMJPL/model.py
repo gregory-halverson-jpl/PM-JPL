@@ -28,7 +28,7 @@ from carlson_leaf_area_index import carlson_leaf_area_index
 from carlson_fractional_vegetation_cover import carlson_fractional_vegetation_cover
 from carlson_leaf_area_index import carlson_leaf_area_index
 
-from daylight_evapotranspiration import lambda_Jkg_from_Ta_C
+from daylight_evapotranspiration import lambda_Jkg_from_Ta_C, daylight_ET_from_instantaneous_LE
 
 from meteorology_conversion import SVP_Pa_from_Ta_C
 from meteorology_conversion import calculate_air_density
@@ -672,43 +672,19 @@ def PMJPL(
     # --- daylight Upscaling Option ---
     if upscale_to_daylight and time_UTC is not None:
         logger.info("started daylight ET upscaling (PMJPL)")
-        # Calculate daylight net radiation if not provided
-        if Rn_daylight_Wm2 is None:
-            try:
-                from verma_net_radiation import daylight_Rn_integration_verma
-                Rn_daylight_Wm2 = daylight_Rn_integration_verma(
-                    Rn_Wm2=Rn_Wm2,
-                    time_UTC=time_UTC,
-                    geometry=geometry
-                )
-            except ImportError:
-                logger.warning("daylight_Rn_integration_verma not available; skipping daylight net radiation integration")
-                Rn_daylight_Wm2 = Rn_Wm2
-        results["Rn_daylight_Wm2"] = Rn_daylight_Wm2
 
-        # Calculate evaporative fraction (EF)
-        EF = rt.where((LE_Wm2 == 0) | ((Rn_Wm2 - G_Wm2) == 0), 0, LE_Wm2 / (Rn_Wm2 - G_Wm2))
-        results["EF"] = EF
+        # Use new upscaling function from daylight_evapotranspiration
+        daylight_results = daylight_ET_from_instantaneous_LE(
+            LE_instantaneous_Wm2=LE_Wm2,
+            Rn_instantaneous_Wm2=Rn_Wm2,
+            G_instantaneous_Wm2=G_Wm2,
+            day_of_year=day_of_year,
+            time_UTC=time_UTC,
+            geometry=geometry
+        )
+        # Add all returned daylight results to output
+        results.update(daylight_results)
 
-        # Calculate daylight latent heat flux
-        LE_daylight_Wm2 = EF * Rn_daylight_Wm2
-        results["LE_daylight_Wm2"] = LE_daylight_Wm2
-
-        # Calculate daylight hours
-        try:
-            from sun_angles import calculate_daylight
-            daylight_hours = calculate_daylight(day_of_year=day_of_year, time_UTC=time_UTC, geometry=geometry)
-        except ImportError:
-            logger.warning("calculate_daylight not available; using 12 hours as default")
-            daylight_hours = 12.0
-        daylight_seconds = daylight_hours * 3600.0
-
-        # Latent heat of vaporization (J/kg) for 20C
-        LAMBDA_JKG_WATER_20C = 2450000.0
-
-        # daylight ET in kg
-        ET_daylight_kg = rt.clip(LE_daylight_Wm2 * daylight_seconds / LAMBDA_JKG_WATER_20C, 0.0, None)
-        results["ET_daylight_kg"] = ET_daylight_kg
         logger.info("completed daylight ET upscaling (PMJPL)")
 
     return results
