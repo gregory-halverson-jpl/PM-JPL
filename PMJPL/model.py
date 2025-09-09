@@ -45,7 +45,7 @@ from .constants import *
 from .PMJPL_parameter_from_IGBP import PMJPL_parameter_from_IGBP
 from .calculate_gamma import calculate_gamma
 from .soil_moisture_constraint import calculate_fSM
-from .Tmin_factor import Tmin_factor
+from .minimum_temperature_factor import Tmin_factor
 from .correctance_factor import calculate_correctance_factor
 from .VPD_factor import calculate_VPD_factor
 from .canopy_conductance import calculate_canopy_conductance
