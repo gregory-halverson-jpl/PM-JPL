@@ -28,7 +28,7 @@ from carlson_leaf_area_index import carlson_leaf_area_index
 from carlson_fractional_vegetation_cover import carlson_fractional_vegetation_cover
 from carlson_leaf_area_index import carlson_leaf_area_index
 
-from daily_evapotranspiration_upscaling import lambda_Jkg_from_Ta_C
+from daylight_evapotranspiration import lambda_Jkg_from_Ta_C
 
 from meteorology_conversion import SVP_Pa_from_Ta_C
 from meteorology_conversion import calculate_air_density
