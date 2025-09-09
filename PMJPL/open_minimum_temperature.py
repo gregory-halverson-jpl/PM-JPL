@@ -4,7 +4,7 @@ from typing import Union
 
 def open_minimum_temperature(IGBP: Union[Raster, int], geometry=None, IGBP_upsampling_resolution_meters=None):
     return PMJPL_parameter_from_IGBP(
-        variable="tmin_open",
+        variable="Tmin_open",
         IGBP=IGBP,
         geometry=geometry,
         IGBP_upsampling_resolution_meters=IGBP_upsampling_resolution_meters

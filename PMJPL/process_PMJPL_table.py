@@ -7,6 +7,7 @@ It prepares the required variables from a pandas DataFrame, handles missing or a
 import logging
 
 import numpy as np
+import pandas as pd
 import rasters as rt
 from rasters import MultiPoint, WGS84
 
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 def process_PMJPL_table(
         input_df: DataFrame,
-        upscale_to_daily: bool = False,
+        upscale_to_daylight: bool = False,
         regenerate_net_radiation: bool = False
         ) -> DataFrame:
     """
@@ -40,6 +41,7 @@ def process_PMJPL_table(
         - 'Ta_C' or 'Ta': Air temperature in Celsius (required)
         - 'RH': Relative humidity (0-1, required)
         - 'Rn_Wm2': Net radiation (W/m^2, required)
+        - 'time_UTC': Time in UTC (required)
         - 'geometry': Geometry object (optional, will be constructed from 'lat' and 'lon' if missing)
         - 'lat', 'lon': Latitude and longitude (optional, used to construct geometry if needed)
 
@@ -54,7 +56,7 @@ def process_PMJPL_table(
             - 'PET': Potential evapotranspiration
 
     Example:
-        Suppose you have a CSV file with columns: NDVI, ST_C, albedo, Ta_C, RH, Rn, lat, lon
+        Suppose you have a CSV file with columns: NDVI, ST_C, albedo, Ta_C, RH, Rn, time_UTC, lat, lon
 
         ```python
         import pandas as pd
@@ -80,6 +82,7 @@ def process_PMJPL_table(
 
     # Extract and typecast surface temperature (ST_C) and NDVI
     ST_C = np.array(input_df.ST_C).astype(np.float64)
+    emissivity = np.array(input_df.emissivity).astype(np.float64)
     NDVI = np.array(input_df.NDVI).astype(np.float64)
 
     # Mask NDVI values below threshold (0.06) as NaN
@@ -98,10 +101,31 @@ def process_PMJPL_table(
 
     # Extract and typecast relative humidity and net radiation
     RH = np.array(input_df.RH).astype(np.float64)
+
+    if "SWin_Wm2" in input_df:
+        SWin_Wm2 = np.array(input_df.SWin_Wm2).astype(np.float64)
+    else:
+        SWin_Wm2 = None
+
     if "Rn_Wm2" in input_df:
         Rn_Wm2 = np.array(input_df.Rn_Wm2).astype(np.float64)
     else:
         Rn_Wm2 = None
+
+    if "Rn_daily_Wm2" in input_df:
+        Rn_daylight_Wm2 = np.array(input_df.Rn_daily_Wm2).astype(np.float64)
+    else:
+        Rn_daylight_Wm2 = None
+
+    if "Tmin_C" in input_df:
+        Tmin_C = np.array(input_df.Tmin_C).astype(np.float64)
+    else:
+        Tmin_C = None
+
+    if "elevation_km" in input_df:
+        elevation_km = np.array(input_df.elevation_km).astype(np.float64)
+    else:
+        elevation_km = None
 
     # --- Handle geometry and time columns ---
     import pandas as pd
@@ -146,16 +170,26 @@ def process_PMJPL_table(
 
     logger.info("completed extracting geometry from PM-JPL input table")
 
-    # --- Pass geometry and variables to the model ---
+    logger.info("started extracting time from PM-JPL input table")
+    time_UTC = pd.to_datetime(input_df.time_UTC).tolist()
+    logger.info("completed extracting time from PM-JPL input table")
+
+    # --- Pass time and geometry to the model ---
     results = PMJPL(
         geometry=geometry,
         NDVI=NDVI,
         Ta_C=Ta_C,
         ST_C=ST_C,
+        emissivity=emissivity,
         RH=RH,
         Rn_Wm2=Rn_Wm2,
+        Rn_daylight_Wm2=Rn_daylight_Wm2,
+        SWin_Wm2=SWin_Wm2,
         albedo=albedo,
-        upscale_to_daily=upscale_to_daily,
+        Tmin_C=Tmin_C,
+        elevation_km=elevation_km,
+        time_UTC=time_UTC,
+        upscale_to_daylight=upscale_to_daylight,
         regenerate_net_radiation=regenerate_net_radiation
     )
 

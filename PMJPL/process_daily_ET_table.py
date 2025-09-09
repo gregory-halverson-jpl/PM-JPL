@@ -1,8 +1,8 @@
 import pandas as pd
 
 from sun_angles import SHA_deg_from_DOY_lat, daylight_from_SHA, sunrise_from_SHA
-from verma_net_radiation import daily_Rn_integration_verma
-from daily_evapotranspiration_upscaling import daily_ET_from_daily_LE
+from verma_net_radiation import daylight_Rn_integration_verma
+from daylight_evapotranspiration import daylight_ET_from_daily_LE
 
 from meteorology_conversion import celcius_to_kelvin
 
@@ -18,7 +18,7 @@ def process_daily_ET_table(input_df: pd.DataFrame) -> pd.DataFrame:
     sunrise_hour = sunrise_from_SHA(SHA_deg)
     daylight_hours = daylight_from_SHA(SHA_deg)
 
-    Rn_daylight = daily_Rn_integration_verma(
+    Rn_daylight = daylight_Rn_integration_verma(
         Rn=Rn,
         hour_of_day=hour_of_day,
         DOY=DOY,
@@ -28,7 +28,7 @@ def process_daily_ET_table(input_df: pd.DataFrame) -> pd.DataFrame:
     )
 
     LE_daylight = EF * Rn_daylight
-    ET = daily_ET_from_daily_LE(LE_daylight, daylight_hours)
+    ET = daylight_ET_from_daily_LE(LE_daylight, daylight_hours)
 
     output_df = input_df.copy()
     output_df["EF"] = EF
