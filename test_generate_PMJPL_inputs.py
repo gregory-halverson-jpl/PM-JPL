@@ -26,16 +26,8 @@ def test_generate_PMJPL_inputs():
     
     input_df = pd.DataFrame(sample_data)
     
-    print("Input DataFrame:")
-    print(input_df)
-    print("\n" + "="*60 + "\n")
-    
     # Generate PMJPL inputs
     result_df = generate_PMJPL_inputs(input_df)
-    
-    print("Result DataFrame:")
-    print(result_df)
-    print("\n" + "="*60 + "\n")
     
     # Check that all expected columns are present
     expected_columns = [
@@ -44,17 +36,10 @@ def test_generate_PMJPL_inputs():
         'CL', 'Tmin_open', 'Tmin_closed', 'VPD_closed', 'VPD_open'
     ]
     
-    print("Column check:")
     for col in expected_columns:
-        if col in result_df.columns:
-            print(f"✓ {col}: {result_df[col].iloc[0]}")
-        else:
-            print(f"✗ {col}: MISSING")
-    
-    print(f"\nTotal columns: {len(result_df.columns)}")
-    print(f"Expected columns: {len(expected_columns)}")
-    
-    return result_df
+        assert col in result_df.columns, f"Missing expected column: {col}"
+
+    assert not result_df.empty, "Result DataFrame is empty"
 
 if __name__ == "__main__":
-    result = test_generate_PMJPL_inputs()
+    test_generate_PMJPL_inputs()

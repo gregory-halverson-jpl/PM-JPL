@@ -69,18 +69,6 @@ __author__ = 'Qiaozhen Mu, Maosheng Zhao, Steven W. Running, Gregory Halverson'
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_WORKING_DIRECTORY = "."
-DEFAULT_MOD16_INTERMEDIATE = "MOD16_intermediate"
-
-DEFAULT_OUTPUT_VARIABLES = [
-    'LEi',
-    'LEc',
-    'LEs',
-    'LE',
-    'LE_daylight',
-    'ET_daylight_kg'
-]
-
 def PMJPL(
     NDVI: Union[Raster, np.ndarray],
     ST_C: Union[Raster, np.ndarray] = None,
@@ -336,7 +324,7 @@ def PMJPL(
         raise ValueError("soil heat flux (G) not given")
     
     check_distribution(G_Wm2, "G_Wm2")
-    results["G"] = G_Wm2
+    results["G_Wm2"] = G_Wm2
 
     LAI = carlson_leaf_area_index(NDVI)
 
