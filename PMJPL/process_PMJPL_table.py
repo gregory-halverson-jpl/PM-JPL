@@ -127,6 +127,11 @@ def process_PMJPL_table(
     else:
         elevation_km = None
 
+    if "IGBP" in input_df:
+        IGBP = np.array(input_df.IGBP).astype(np.int8)
+    else:
+        IGBP = None
+
     # --- Handle geometry and time columns ---
     import pandas as pd
     from rasters import MultiPoint, WGS84
@@ -187,6 +192,7 @@ def process_PMJPL_table(
         SWin_Wm2=SWin_Wm2,
         albedo=albedo,
         Tmin_C=Tmin_C,
+        IGBP=IGBP,
         elevation_km=elevation_km,
         time_UTC=time_UTC,
         upscale_to_daylight=upscale_to_daylight,

@@ -228,6 +228,8 @@ def PMJPL(
     if Ta_C is None:
         raise ValueError("air temperature (Ta_C) not given")
 
+    check_distribution(Ta_C, "Ta_C")
+
     if Tmin_C is None and geometry is not None and time_UTC is not None:
         Tmin_K = GEOS5FP_connection.Tmin_K(
             time_UTC=time_UTC,
@@ -240,6 +242,8 @@ def PMJPL(
     if Tmin_C is None:
         raise ValueError("minimum temperature (Tmin_C) not given")
 
+    check_distribution(Tmin_C, "Tmin_C")
+
     if RH is None and geometry is not None and time_UTC is not None:
         RH = GEOS5FP_connection.RH(
             time_UTC=time_UTC,
@@ -250,8 +254,12 @@ def PMJPL(
     if RH is None:
         raise ValueError("relative humidity (RH) not given")
 
+    check_distribution(RH, "RH")
+
     if elevation_km is None and geometry is not None:
         elevation_km = NASADEM.elevation_km(geometry=geometry)
+
+    check_distribution(elevation_km, "elevation_km")
 
     elevation_m = elevation_km * 1000.0
 
@@ -264,6 +272,8 @@ def PMJPL(
             raise ValueError(f"invalid geometry type for IGBP retrieval: {type(geometry)}")
 
         IGBP = load_MCD12C1_IGBP(geometry=IGBP_geometry)
+    
+    check_distribution(np.float32(IGBP), "IGBP")
 
     if regenerate_net_radiation or (Rn_Wm2 is None and albedo is not None and ST_C is not None and emissivity is not None):
         if SWin_Wm2 is None and geometry is not None and time_UTC is not None:
@@ -311,6 +321,8 @@ def PMJPL(
             raise ValueError(f"net radiation (Rn_Wm2) not given, and missing required variables to calculate: {', '.join(missing_vars)}")
         else:
             raise ValueError("net radiation (Rn_Wm2) not given and cannot be calculated")
+
+    check_distribution(Rn_Wm2, "Rn_Wm2")
 
     if G_Wm2 is None and Rn_Wm2 is not None and ST_C is not None and NDVI is not None and albedo is not None:
         G_Wm2 = calculate_SEBAL_soil_heat_flux(
