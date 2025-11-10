@@ -463,7 +463,7 @@ def PMJPL(
     results['Ac'] = Ac
 
     # calculate wet latent heat flux (LEi)
-    LEi_Wm2 = calculate_interception(
+    LE_interception_Wm2 = calculate_interception(
         delta_Pa=delta_Pa,
         Ac=Ac,
         rho=rho_kgm3,
@@ -475,8 +475,8 @@ def PMJPL(
         rvc=rvc,
     )
     
-    check_distribution(LEi_Wm2, "LEi_Wm2")
-    results['LEi_Wm2'] = LEi_Wm2
+    check_distribution(LE_interception_Wm2, "LE_interception_Wm2")
+    results['LE_interception_Wm2'] = LE_interception_Wm2
 
     # calculate correctance factor (rcorr)
     rcorr = calculate_correctance_factor(Ps_Pa, Ta_K)
@@ -566,7 +566,7 @@ def PMJPL(
     results["ra"] = ra
 
     # transpiration
-    LEc_Wm2 = calculate_transpiration(
+    LE_canopy_Wm2 = calculate_transpiration(
         delta_Pa=delta_Pa,
         Ac=Ac,
         rho_kgm3=rho_kgm3,
@@ -578,8 +578,8 @@ def PMJPL(
         rs=rs,
     )
 
-    check_distribution(LEc_Wm2, "LEc_Wm2")
-    results['LEc_Wm2'] = LEc_Wm2
+    check_distribution(LE_canopy_Wm2, "LE_canopy_Wm2")
+    results['LE_canopy_Wm2'] = LE_canopy_Wm2
 
     # soil evaporation
     # aerodynamic resistant constraints from land-cover
@@ -659,13 +659,13 @@ def PMJPL(
     results['fSM'] = fSM
 
     # soil evaporation
-    LEs_Wm2 = rt.clip(wet_soil_evaporation_Wm2 + potential_soil_evaporation_Wm2 * fSM, 0.0, None)
-    LEs_Wm2 = rt.where(np.isnan(LEs_Wm2), 0.0, LEs_Wm2)
-    check_distribution(LEs_Wm2, "LEs_Wm2")
-    results['LEs'] = LEs_Wm2
+    LE_soil_Wm2 = rt.clip(wet_soil_evaporation_Wm2 + potential_soil_evaporation_Wm2 * fSM, 0.0, None)
+    LE_soil_Wm2 = rt.where(np.isnan(LE_soil_Wm2), 0.0, LE_soil_Wm2)
+    check_distribution(LE_soil_Wm2, "LE_soil_Wm2")
+    results['LE_soil_Wm2'] = LE_soil_Wm2
 
     # sum partitions into total latent heat flux
-    LE_Wm2 = rt.clip(LEi_Wm2 + LEc_Wm2 + LEs_Wm2, 0.0, Rn_Wm2)
+    LE_Wm2 = rt.clip(LE_interception_Wm2 + LE_canopy_Wm2 + LE_soil_Wm2, 0.0, Rn_Wm2)
     check_distribution(LE_Wm2, "LE_Wm2")
     results['LE_Wm2'] = LE_Wm2
 
