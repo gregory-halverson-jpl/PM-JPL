@@ -122,10 +122,12 @@ def process_PMJPL_table(
     else:
         Tmin_C = None
 
+    if "elevation_m" in input_df:
+        elevation_m = np.array(input_df.elevation_m).astype(np.float64)
     if "elevation_km" in input_df:
-        elevation_km = np.array(input_df.elevation_km).astype(np.float64)
+        elevation_m = np.array(input_df.elevation_km).astype(np.float64) * 1000.0
     else:
-        elevation_km = None
+        elevation_m = None
 
     # --- Handle geometry and time columns ---
     import pandas as pd
@@ -187,7 +189,7 @@ def process_PMJPL_table(
         SWin_Wm2=SWin_Wm2,
         albedo=albedo,
         Tmin_C=Tmin_C,
-        elevation_km=elevation_km,
+        elevation_m=elevation_m,
         time_UTC=time_UTC,
         upscale_to_daylight=upscale_to_daylight,
         regenerate_net_radiation=regenerate_net_radiation

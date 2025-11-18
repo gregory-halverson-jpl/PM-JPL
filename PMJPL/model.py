@@ -87,7 +87,7 @@ def PMJPL(
     GEOS5FP_connection: GEOS5FP = None,
     resampling: str = "nearest",
     Ps_Pa: Union[Raster, np.ndarray] = None,
-    elevation_km: Union[Raster, np.ndarray] = None,
+    elevation_m: Union[Raster, np.ndarray] = None,
     delta_Pa: Union[Raster, np.ndarray] = None,
     lambda_Jkg: Union[Raster, np.ndarray] = None,
     gamma_Jkg: Union[Raster, np.ndarray, float] = None,
@@ -159,8 +159,8 @@ def PMJPL(
         Resampling method for raster data.
     Ps_Pa : Raster or np.ndarray, optional
         Surface pressure (Pa).
-    elevation_km : Raster or np.ndarray, optional
-        Elevation (km).
+    elevation_m : Raster or np.ndarray, optional
+        Elevation (meters).
     delta_Pa : Raster or np.ndarray, optional
         Slope of saturation vapor pressure curve (Pa/°C).
     lambda_Jkg : Raster or np.ndarray, optional
@@ -250,10 +250,8 @@ def PMJPL(
     if RH is None:
         raise ValueError("relative humidity (RH) not given")
 
-    if elevation_km is None and geometry is not None:
-        elevation_km = NASADEM.elevation_km(geometry=geometry)
-
-    elevation_m = elevation_km * 1000.0
+    if elevation_m is None and geometry is not None:
+        elevation_m = NASADEM.elevation_m(geometry=geometry)
 
     if IGBP is None and geometry is not None:
         if isinstance(geometry, VectorGeometry):
