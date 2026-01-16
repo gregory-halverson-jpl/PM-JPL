@@ -37,3 +37,10 @@ BETA = 200
 RH_THRESHOLD = 0.7
 
 MIN_FWET = 0.0001
+
+GEOS5FP_INPUTS = [
+    "Ta_C",
+    "Tmin_C",
+    "RH",
+    "SWin"
+]
