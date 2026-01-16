@@ -37,6 +37,9 @@ reinstall:
 	make uninstall
 	make install
 
+generate-GEOS5FP-inputs:
+	python -m PMJPL.generate_PMJPL_GEOS5FP_inputs
+
 environment:
 	mamba create -y -n $(ENVIRONMENT_NAME) -c conda-forge python=3.10
 
