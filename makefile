@@ -8,6 +8,7 @@ clean:
 	rm -rf dist/
 	rm -rf *.egg-info
 	rm -rf .pytest_cache
+	rm -rf $(PACKAGE_NAME)-repomix.xml repomix-output.xml
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 
 test:
@@ -60,3 +61,6 @@ docker-interactive:
 
 docker-remove:
 	docker rmi -f $(DOCKER_IMAGE_NAME)
+
+repomix:
+	npx repomix -o $(PACKAGE_NAME)-repomix.xml --ignore "**/*.tif,**/*.jpeg,**/*.aux.xml,**/*.csv,**/*.pdf,**/*.svg,**/*.ipynb,references/**,*-repomix*.xml,repomix-output.xml,release_diffs.patch" --copy
